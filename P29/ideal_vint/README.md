@@ -1,0 +1,1 @@
+Перенести все данные с папок BISO, BKIN, CHAB сюда + analysis.ipynb
