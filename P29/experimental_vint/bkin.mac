@@ -1,18 +1,21 @@
-!!! Программа задания  деформаций функциями, соответствующими винтовой траектории деформаций
-!!! Для упруго-пласт. плоско-напряж. элемента
-!!! Размерность мм, МПа
+/CLEAR, NOSTART
+/FILENAME, bkin
 
-/FILENAME, P29_BKIN_Incompressible
-/CLEAR,NOSTART
+exp_num_points = 104 ! Количество шагов в эксперименте
+
+! Загружаем днформации e_zz из экперимента
+*DIM, exp_ezz, TABLE, exp_num_points   
+*TREAD,exp_ezz,'ezz_data','csv',' ',1,
+
+! Загружаем днформации e_tt из экперимента
+*DIM, exp_ett, TABLE, exp_num_points   
+*TREAD,exp_ett,'ett_data','csv',' ',1,
+
+! Загружаем днформации e_tz из экперимента
+*DIM, exp_etz, TABLE, exp_num_points   
+*TREAD,exp_etz,'etz_data','csv',' ',1,
 
 size=1 !! Размер элемента в мм
-pi=acos(-1)
-
-epsy00=0.005 !!! В экспернименте это величина epsz*=0.005, одинаковая для всех экспериментов
-cc=25e-4 !!! Для эксперимента П.29
-a=157e-4 !!! Для эксперимента шаг винтовой линии
-epsy0=epsy00+cc !!! Величина деформации растяжения по y
-
 
 /PREP7
 ET,1,PLANE182
@@ -31,45 +34,37 @@ E,1,2,3,4
 
 
 /SOLU
-!!!!!!! 1-ый шаг - решение с нулевыми граничными условиями
+
+! 1-ый шаг - решение с нулевыми граничными условиями
 D,ALL,ALL,0
-SOLVE !!! Нулевая точка
+SOLVE
 OUTRES,ALL,ALL
-
-!!!!!!!!!!!! 1-ый этап - одноосное деформирование по у до величины epsy0
-
-N_stage1 = 20 !!! шагов расчета
-d0=epsy0/N_stage1  !!! Прирост деформации на каждом шаге
-
 
 ! Жестко закрепляем узел 1
 D,1,UX,0 
 D,1,UY,0
 
-*DO,i,1,N_stage1 ,1
+*DO, i, 1, exp_num_points, 1
 
-	! Целевые деформации на текущем шаге i
-	epsx = 0
-	epsy = d0*i
-	tauxy = 0
+	epsx = exp_ett(i) / 100.0
+	epsy = exp_ezz(i) / 100.0
+	tauxy = exp_etz(i) / 100.0
 
-	! Вычисляем ВСЕ компоненты перемещений по формулам (3.4)
 	! ux = epsx*x + tauxy*y
 	! uy = epsy*y
-    
+
 	! Узел 2 (x=size, y=0)
 	d2x = epsx*size + tauxy*0
 	d2y = epsy*0
-    
+
 	! Узел 3 (x=size, y=size)
 	d3x = epsx*size + tauxy*size
 	d3y = epsy*size
-    
+
 	! Узел 4 (x=0, y=size)
 	d4x = epsx*0 + tauxy*size
 	d4y = epsy*size
 
-	! Прикладываем ВСЕ вычисленные перемещения ко ВСЕМ свободным узлам
 	D,2,UX,d2x
 	D,2,UY,d2y
 	
@@ -79,50 +74,9 @@ D,1,UY,0
 	D,4,UX,d4x
 	D,4,UY,d4y
 	
-	TIME,i+1
+	TIME, i + 1
 	NSUBST,100,0,0
 	AUTOTS,1
-	SOLVE
-*ENDDO
-
-!!!!!!! 2-ой этап - деформирование по винтовой линии
-
-nv = 1.75 !!! Количество витков
-N_stage2 = 200 !!! Шагов расчета на втором этапе
-dalf = (2*pi*nv) / N_stage2 ! Изменение угла на каждом шаге
-
-*DO,j,1,N_stage2,1
-
-	alf=dalf*j
-	epsx = sqrt(3)/2*a*(alf/(2*pi)) - 1/2*cc*(cos(alf)-1) !!! соответствует eps_tetta
-	epsy=cc*(cos(alf)-1)+epsy0 !!! соответствует eps_z
-	tauxy=2*sqrt(3)/2*cc*sin(alf) !!! соответствует gamma_tetta_z=2*eps_tetta_z
-
-	! Узел 2 (x=size, y=0)
-	d2x = epsx*size + tauxy*0
-	d2y = epsy*0
-    
-	! Узел 3 (x=size, y=size)
-	d3x = epsx*size + tauxy*size
-	d3y = epsy*size
-    
-	! Узел 4 (x=0, y=size)
-	d4x = epsx*0 + tauxy*size
-	d4y = epsy*size
-
-	D,2,UX,d2x
-	D,2,UY,d2y
-	
-	D,3,UX,d3x
-	D,3,UY,d3y
-	
-	D,4,UX,d4x
-	D,4,UY,d4y
-
-	TIME,j+N_stage1+1
-	NSUBST,100,0,0
-	AUTOTS,1 !Включить автомат. шаг расчета
-
 	SOLVE
 *ENDDO
 
