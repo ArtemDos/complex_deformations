@@ -1,0 +1,193 @@
+/CLEAR, NOSTART
+/FILENAME, chab
+
+exp_num_points = 104 ! Количество шагов в эксперименте
+
+! Загружаем днформации e_zz из экперимента
+*DIM, exp_ezz, TABLE, exp_num_points   
+*TREAD,exp_ezz,'ezz_data','csv',' ',1,
+
+! Загружаем днформации e_tt из экперимента
+*DIM, exp_ett, TABLE, exp_num_points   
+*TREAD,exp_ett,'ett_data','csv',' ',1,
+
+! Загружаем днформации e_tz из экперимента
+*DIM, exp_etz, TABLE, exp_num_points   
+*TREAD,exp_etz,'etz_data','csv',' ',1,
+
+size=1 !! Размер элемента в мм
+
+/PREP7
+ET,1,PLANE182
+MP,EX,1,2.05e5 !!! МПа
+MP,PRXY,1,0.29
+TB,CHAB, 1, 1, 3  ! 3 слагаемых, нелинейная модель
+TBTEMP,0
+! Предел текучести (начальный радиус поверхности)
+TBDATA,1, 270
+! Параметры для 1-го слагаемого (C1, gamma1)
+TBDATA,2, 1e5, 1e3
+! Параметры для 2-го слагаемого (C2, gamma2)
+TBDATA,4, 1e4, 40
+! Параметры для 3-го слагаемого (C3, gamma3)
+TBDATA,6, 1e3, 40
+
+! узлы элемента
+N,1,0,0,0
+N,2,size,0,0
+N,3,size,size,0
+N,4,0,size,0
+E,1,2,3,4
+
+
+/SOLU
+
+! 1-ый шаг - решение с нулевыми граничными условиями
+D,ALL,ALL,0
+SOLVE
+OUTRES,ALL,ALL
+
+! Жестко закрепляем узел 1
+D,1,UX,0 
+D,1,UY,0
+
+*DO, i, 1, exp_num_points, 1
+
+	epsx = exp_ett(i) / 100.0
+	epsy = exp_ezz(i) / 100.0
+	tauxy = exp_etz(i) / 100.0
+
+	! ux = epsx*x + tauxy*y
+	! uy = epsy*y
+
+	! Узел 2 (x=size, y=0)
+	d2x = epsx*size + tauxy*0
+	d2y = epsy*0
+
+	! Узел 3 (x=size, y=size)
+	d3x = epsx*size + tauxy*size
+	d3y = epsy*size
+
+	! Узел 4 (x=0, y=size)
+	d4x = epsx*0 + tauxy*size
+	d4y = epsy*size
+
+	D,2,UX,d2x
+	D,2,UY,d2y
+	
+	D,3,UX,d3x
+	D,3,UY,d3y
+	
+	D,4,UX,d4x
+	D,4,UY,d4y
+
+	TIME, i
+	NSUBST,100,0,0
+	AUTOTS,1
+	SOLVE
+*ENDDO
+
+FINISH
+
+
+/POST26
+
+*GET, ActiveJob, ACTIVE, 0, JOBNAM
+FILE, ActiveJob, 'rst'
+
+NUMVAR, 20
+
+! Объявление деформаций
+ESOL,2,1,3,EPEL,X,
+ESOL,3,1,3,EPPL,X,
+ADD,4,2,3, , , , ,1,1,1, !!! полная деформация eps_xx
+
+ESOL,5,1,3,EPEL,Y,
+ESOL,6,1,3,EPPL,Y,
+ADD,7,5,6, , , , ,1,1,1, !!! полная деформация eps_yy
+
+ESOL,8,1,3,EPEL,XY,
+ESOL,9,1,3,EPPL,XY,
+ADD,10,8,9, , , , ,1,1,1, !!! полная деформация eps_xy
+
+ESOL,11,1,3,EPEL,Z,
+ESOL,12,1,3,EPPL,Z,
+ADD,13,11,12, , , , ,1,1,1, !!! полная деформация eps_zz
+
+! Объявление напряжений
+ESOL,14,1,3,S,X,
+ESOL,15,1,3,S,Y,
+ESOL,16,1,3,S,XY,
+ESOL,17,1,3,S,EQV, ! интенсивность напряжений
+
+ESOL,18,1,3,EPPL,EQV, ! интенсивность пластических деформаций
+ESOL,19,1,3,NL,EPEQ, ! параметр Одквиста
+
+
+XVAR,1 ! строим графики от шага
+PLVAR,4,7,10,13, , , , , , , !!! график деформаций
+
+
+! Загружаем все объявленные переменные данными
+STORE,MERGE
+
+*GET, NumSteps, VARI, 1, NSETS ! Определяем размер массивов
+
+! Создаем массивы для ВСЕХ переменных (с 1 по 19)
+*DIM, var1_time, ARRAY, NumSteps
+*DIM, var2_epelx, ARRAY, NumSteps
+*DIM, var3_epplx, ARRAY, NumSteps
+*DIM, var4_eptox, ARRAY, NumSteps
+*DIM, var5_epely, ARRAY, NumSteps
+*DIM, var6_epply, ARRAY, NumSteps
+*DIM, var7_eptoy, ARRAY, NumSteps
+*DIM, var8_epelxy, ARRAY, NumSteps
+*DIM, var9_epplxy, ARRAY, NumSteps
+*DIM, var10_eptoxy, ARRAY, NumSteps
+*DIM, var11_epelz, ARRAY, NumSteps
+*DIM, var12_epplz, ARRAY, NumSteps
+*DIM, var13_eptoz, ARRAY, NumSteps
+*DIM, var14_sx, ARRAY, NumSteps
+*DIM, var15_sy, ARRAY, NumSteps
+*DIM, var16_sxy, ARRAY, NumSteps
+*DIM, var17_seqv, ARRAY, NumSteps
+*DIM, var18_eppleqv, ARRAY, NumSteps
+*DIM, var19_nlepeq, ARRAY, NumSteps
+
+! Заполняем массивы данными из переменных POST26
+VGET, var1_time(1), 1
+VGET, var2_epelx(1), 2
+VGET, var3_epplx(1), 3
+VGET, var4_eptox(1), 4
+VGET, var5_epely(1), 5
+VGET, var6_epply(1), 6
+VGET, var7_eptoy(1), 7
+VGET, var8_epelxy(1), 8
+VGET, var9_epplxy(1), 9
+VGET, var10_eptoxy(1), 10
+VGET, var11_epelz(1), 11
+VGET, var12_epplz(1), 12
+VGET, var13_eptoz(1), 13
+VGET, var14_sx(1), 14
+VGET, var15_sy(1), 15
+VGET, var16_sxy(1), 16
+VGET, var17_seqv(1), 17
+VGET, var18_eppleqv(1), 18
+VGET, var19_nlepeq(1), 19
+
+
+*CFOPEN, %ActiveJob%, csv ! Открываем CSV файл для записи
+
+! Записываем заголовок
+*VWRITE,'Time','EPEL_TT','EPPL_TT','EPTO_TT','EPEL_ZZ','EPPL_ZZ','EPTO_ZZ','EPEL_TZ','EPPL_TZ','EPTO_TZ','EPEL_RR','EPPL_RR','EPTO_RR','S_TT','S_ZZ','S_TZ','S_EQV','EPPL_EQV','NL_EPEQ'
+(A,',',A,',',A,',',A,',',A,',',A,',',A,',',A,',',A,',',A,',',A,',',A,',',A,',',A,',',A,',',A,',',A,',',A,',',A)
+
+! Записываем данные в цикле
+*DO, i, 1, NumSteps, 1
+    *VWRITE, var1_time(i), var2_epelx(i), var3_epplx(i), var4_eptox(i), var5_epely(i), var6_epply(i), var7_eptoy(i), var8_epelxy(i), var9_epplxy(i), var10_eptoxy(i), var11_epelz(i), var12_epplz(i), var13_eptoz(i), var14_sx(i), var15_sy(i), var16_sxy(i), var17_seqv(i), var18_eppleqv(i), var19_nlepeq(i)
+    (E14.7,',',E14.7,',',E14.7,',',E14.7,',',E14.7,',',E14.7,',',E14.7,',',E14.7,',',E14.7,',',E14.7,',',E14.7,',',E14.7,',',E14.7,',',E14.7,',',E14.7,',',E14.7,',',E14.7,',',E14.7,',',E14.7)
+*ENDDO
+
+*CFCLOS
+
+FINISH
