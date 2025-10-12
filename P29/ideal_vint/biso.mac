@@ -38,15 +38,15 @@ SOLVE ! Нулевая точка
 OUTRES,ALL,ALL
 
 ! 1-ый этап - одноосное деформирование по у до величины epsy0
-N=20 ! шагов расчета
-d0=epsy0/N ! Прирост деформации на каждом шаге
+N_stage1 = 20 ! шагов расчета
+d0=epsy0/N_stage1 ! Прирост деформации на каждом шаге
 
 
 ! Жестко закрепляем узел 1
 D,1,UX,0 
 D,1,UY,0
 
-*DO,i,1,N,1
+*DO,i,1,N_stage1 ,1
 
 	! Целевые деформации на текущем шаге i
 	epsx = 0
@@ -86,16 +86,16 @@ D,1,UY,0
 *ENDDO
 
 ! 2-ой этап - деформирование по винтовой линии
-nv=1 ! Количество витков
-M=100 ! Шагов расчета для одного витка
-dalf=2*pi/M
+nv = 1.75 ! Количество витков
+N_stage2 = 200 ! Шагов расчета на втором этапе
+dalf = (2*pi*nv) / N_stage2 ! Изменение угла на каждом шаге
 
-*DO,j,1,M,1
+*DO,j,1,N_stage2,1
 
 	alf=dalf*j
-	epsx=sqrt(3)/2*a*(alf/2/pi+nv-1)-1/2*cc*(cos(alf)-1) !!! соответствует eps_tetta
-	epsy=cc*(cos(alf)-1)+epsy0 !!! соответствует eps_z
-	tauxy=2*sqrt(3)/2*cc*sin(alf) !!! соответствует gamma_tetta_z=2*eps_tetta_z
+	epsx = sqrt(3)/2*a*(alf/(2*pi)) - 1/2*cc*(cos(alf)-1) ! соответствует eps_tetta
+	epsy=cc*(cos(alf)-1)+epsy0 ! соответствует eps_z
+	tauxy=2*sqrt(3)/2*cc*sin(alf) ! соответствует gamma_tetta_z=2*eps_tetta_z
 
 	! Узел 2 (x=size, y=0)
 	d2x = epsx*size + tauxy*0
@@ -118,7 +118,7 @@ dalf=2*pi/M
 	D,4,UX,d4x
 	D,4,UY,d4y
 
-	TIME,j+N+1
+	TIME,j+N_stage1+1
 	NSUBST,100,0,0
 	AUTOTS,1 !Включить автомат. шаг расчета
 
