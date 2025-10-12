@@ -28,8 +28,9 @@ def load_and_filter_ansys_csv(file_path, time_step=1.0):
         data = pd.read_csv(file_path, sep=',')
         data.columns = data.columns.str.strip()
         data = data.sort_values(by='Time').reset_index(drop=True)
+        min_time = data['Time'].min()
         max_time = data['Time'].max()
-        target_times = np.arange(0, max_time + time_step, time_step)
+        target_times = np.arange(np.floor(min_time), max_time + time_step, time_step)
         target_df = pd.DataFrame({'Time': target_times})
         df_filtered = pd.merge_asof(
             target_df, 
@@ -38,7 +39,70 @@ def load_and_filter_ansys_csv(file_path, time_step=1.0):
             direction='nearest'
         )
         df_filtered = df_filtered.drop_duplicates(subset=['Time'], keep='first').reset_index(drop=True)
+        df_filtered['Time'] = df_filtered['Time'] - 1.0
         return df_filtered
 
     except Exception as e:
         raise ValueError(f"Произошла ошибка при чтении или обработке файла: {e}") from e
+
+def load_experimental_data(folder_path,
+                           szz_file='szz_data.csv',
+                           stt_file='stt_data.csv',
+                           stz_file='stz_data.csv',
+                           ezz_file='ezz_data.csv',
+                           ett_file='ett_data.csv',
+                           etz_file='etz_data.csv'):
+    """
+    Загружает и объединяет 6 отдельных CSV-файлов с экспериментальными данными 
+    в один DataFrame.
+
+    Предполагается, что каждый файл имеет 2 колонки: 'No' и значение переменной.
+
+    Args:
+        folder_path (str): Путь к папке, где лежат все 6 CSV-файлов.
+        szz_file (str): Имя файла для SZZ (осевое напряжение).
+        stt_file (str): Имя файла для STT (окружное напряжение).
+        stz_file (str): Имя файла для STZ (касательное напряжение).
+        ezz_file (str): Имя файла для EZZ (осевая деформация).
+        ett_file (str): Имя файла для ETT (окружная деформация).
+        etz_file (str): Имя файла для ETZ (сдвиговая деформация).
+
+    Returns:
+        pandas.DataFrame: Объединенный DataFrame со всеми экспериментальными данными,
+                          либо None в случае ошибки.
+                          
+    Raises:
+        FileNotFoundError: Если папка или один из файлов не найден.
+        ValueError: Если произошла ошибка при чтении или объединении файлов.
+    """
+    
+    if not os.path.isdir(folder_path):
+        raise FileNotFoundError(f"Папка не найдена по пути: '{folder_path}'")
+
+    try:
+        files_to_load = {
+            'SZZ': szz_file, 'STT': stt_file, 'STZ': stz_file,
+            'EZZ': ezz_file, 'ETT': ett_file, 'ETZ': etz_file
+        }
+        
+        df_list = []
+        
+        for var_name, file_name in files_to_load.items():
+            full_path = os.path.join(folder_path, file_name)
+            
+            if not os.path.exists(full_path):
+                raise FileNotFoundError(f"Файл '{file_name}' не найден.")
+            
+            temp_df = pd.read_csv(full_path, index_col='No')
+            if var_name.startswith('E'):
+                temp_df = temp_df / 100.0
+
+            df_list.append(temp_df)
+
+        exp_df = pd.concat(df_list, axis=1)
+        exp_df.reset_index(inplace=True)
+        exp_df['Time'] = exp_df['No'].astype(float)
+        return exp_df
+
+    except Exception as e:
+        raise ValueError(f"Произошла ошибка при загрузке или объединении: {e}") from e

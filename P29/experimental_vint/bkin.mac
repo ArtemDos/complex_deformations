@@ -73,8 +73,8 @@ D,1,UY,0
 	
 	D,4,UX,d4x
 	D,4,UY,d4y
-	
-	TIME, i + 1
+
+	TIME, i
 	NSUBST,100,0,0
 	AUTOTS,1
 	SOLVE
@@ -173,7 +173,7 @@ VGET, var19_nlepeq(1), 19
 *CFOPEN, %ActiveJob%, csv ! Открываем CSV файл для записи
 
 ! Записываем заголовок
-*VWRITE,'Time','EPEL_X','EPPL_X','EPTO_X','EPEL_Y','EPPL_Y','EPTO_Y','EPEL_XY_eng','EPPL_XY_eng','EPTO_XY_tensor','EPEL_Z','EPPL_Z','EPTO_Z','S_X','S_Y','S_XY','S_EQV','EPPL_EQV','NL_EPEQ'
+*VWRITE,'Time','EPEL_TT','EPPL_TT','EPTO_TT','EPEL_ZZ','EPPL_ZZ','EPTO_ZZ','EPEL_TZ','EPPL_TZ','EPTO_TZ','EPEL_RR','EPPL_RR','EPTO_RR','S_TT','S_ZZ','S_TZ','S_EQV','EPPL_EQV','NL_EPEQ'
 (A,',',A,',',A,',',A,',',A,',',A,',',A,',',A,',',A,',',A,',',A,',',A,',',A,',',A,',',A,',',A,',',A,',',A,',',A)
 
 ! Записываем данные в цикле
