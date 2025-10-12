@@ -81,8 +81,8 @@ def load_experimental_data(folder_path,
 
     try:
         files_to_load = {
-            'SZZ': szz_file, 'STT': stt_file, 'STZ': stz_file,
-            'EZZ': ezz_file, 'ETT': ett_file, 'ETZ': etz_file
+            'S_ZZ': szz_file, 'S_TT': stt_file, 'S_TZ': stz_file,
+            'EPTO_ZZ': ezz_file, 'EPTO_TT': ett_file, 'EPTO_TZ': etz_file
         }
         
         df_list = []
@@ -94,7 +94,7 @@ def load_experimental_data(folder_path,
                 raise FileNotFoundError(f"Файл '{file_name}' не найден.")
             
             temp_df = pd.read_csv(full_path, index_col='No')
-            if var_name.startswith('E'):
+            if var_name in ('EPTO_TT', 'EPTO_ZZ', 'EPTO_TZ'):
                 temp_df = temp_df / 100.0
 
             df_list.append(temp_df)
