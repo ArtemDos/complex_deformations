@@ -126,3 +126,36 @@ def plot_equivalent_stress_comparison(calc_data, exp_data, model_name='', yield_
     plt.xlim(left=0)
     plt.ylim(bottom=0)
     plt.show()
+
+def plot_xy(data_pairs, x_col, y_col, title=''):
+    """
+    Строит сравнительный 2D-график для нескольких наборов данных.
+
+    Args:
+        data_pairs (list of tuples): Список кортежей, где каждый кортеж 
+                                     содержит (имя_кривой, DataFrame).
+                                     Пример: [('Расчет', df1), ('Эксперимент', df2)]
+        x_col (str): Название столбца для оси X (должно быть во всех DataFrame).
+        y_col (str): Название столбца для оси Y (должно быть во всех DataFrame).
+        title (str, optional): Заголовок графика.
+    """
+    
+    if not isinstance(data_pairs, list) or not all(isinstance(i, tuple) and len(i) == 2 for i in data_pairs):
+        raise TypeError("Аргумент 'data_pairs' должен быть списком кортежей вида [('имя1', df1), ('имя2', df2), ...]")
+
+    plt.figure(figsize=(12, 7))
+
+    for name, df in data_pairs:
+        if not isinstance(df, pd.DataFrame):
+            raise TypeError(f"Объект для '{name}' не является DataFrame.")
+        if x_col not in df.columns or y_col not in df.columns:
+            raise KeyError(f"В DataFrame для '{name}' отсутствует один из столбцов: '{x_col}' или '{y_col}'.")
+
+        plt.plot(df[x_col], df[y_col], marker='.', linestyle='-', label=name)
+
+    plt.title(title if title else f'Зависимость {y_col} от {x_col}', fontsize=16)
+    plt.xlabel(x_col)
+    plt.ylabel(y_col)
+    plt.grid(True)
+    plt.legend()
+    plt.show()
