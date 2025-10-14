@@ -76,5 +76,5 @@ def plot_xy(data_pairs, x_col, y_cols, title='', exp_data=None):
     plt.xlabel(x_col)
     plt.ylabel(y_labels if is_multi_y else y_cols[0])
     plt.grid(True)
-    plt.legend()
+    plt.legend(fontsize='medium', loc='upper left')
     plt.show()
