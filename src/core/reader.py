@@ -110,103 +110,27 @@ def load_experimental_data(folder_path,
         raise ValueError(f"Произошла ошибка при загрузке или объединении: {e}") from e
     
 
-def load_and_filter_ansys_large(file_path, time_step=1.0):
+def read_ansys_csv(file_path):
     """
-    Оптимизированная функция для чтения огромных файлов ANSYS (100Гб+) с помощью Polars.
-    Автоматически исправляет имена колонок (удаляет пробелы).
+    Загружает CSV-файл с отфильтрованными результатами Ansys и возвращает очищенный DataFrame.
+
+    Args:
+        file_path (str): Путь к файлу.
+
+    Returns:
+        pd.DataFrame: DataFrame с данными.
     """
+    
     if not os.path.exists(file_path):
         raise FileNotFoundError(f"Файл не найден по пути: '{file_path}'")
 
     try:
-        lazy_df = pl.scan_csv(file_path, separator=',')
-        old_columns = lazy_df.collect_schema().names()
-        rename_map = {col: col.strip() for col in old_columns}
-        lazy_df = lazy_df.rename(rename_map)
-        time_stats = lazy_df.select([
-            pl.col("Time").min().alias("min"),
-            pl.col("Time").max().alias("max")
-        ]).collect()
+        df = pd.read_csv(file_path, sep=',')
+        df.columns = df.columns.str.strip()
+        df = df.sort_values(by='Time').reset_index(drop=True)
+        df['Time'] = df['Time'] - 1.0
         
-        min_time = time_stats["min"][0]
-        max_time = time_stats["max"][0]
-
-        target_times = np.arange(np.floor(min_time), max_time + time_step, time_step)
-        target_df = pl.DataFrame({'Time': target_times})
-        lazy_df_sorted = lazy_df.sort("Time") 
-
-        result_lazy = target_df.lazy().join_asof(
-            lazy_df_sorted, 
-            on='Time', 
-            strategy='nearest'
-        )
-
-        df_filtered = result_lazy.collect()
-        df_pandas = df_filtered.to_pandas()
-        df_pandas = df_pandas.drop_duplicates(subset=['Time'], keep='first').reset_index(drop=True)
-        df_pandas['Time'] = df_pandas['Time'] - 1.0
-        
-        return df_pandas
+        return df
 
     except Exception as e:
-        raise ValueError(f"Ошибка при обработке файла: {e}") from e
-
-
-def filter_ansys_manual(input_path, output_path, time_step=1.0, tolerance=0.05):
-    print("Запуск построчной обработки (самый надежный метод)...")
-    
-    with open(input_path, 'r', buffering=1024*1024) as f_in, \
-         open(output_path, 'w', newline='') as f_out:
-        
-        # Читаем первую строку (заголовки)
-        header_line = f_in.readline()
-        headers = [h.strip() for h in header_line.split(',')]
-        
-        # Находим индекс колонки Time
-        try:
-            time_idx = headers.index("Time")
-        except ValueError:
-            # Если не нашли "Time", пробуем найти что-то похожее (Ansys часто делает "Time   ")
-            for i, h in enumerate(headers):
-                if "Time" in h:
-                    time_idx = i
-                    break
-            else:
-                raise ValueError("Колонка Time не найдена!")
-
-        writer = csv.writer(f_out)
-        writer.writerow(headers) # Пишем чистые заголовки
-
-        last_saved_step = -999.0
-        
-        reader = csv.reader(f_in)
-        
-        for i, row in enumerate(reader):
-            if not row: continue
-            
-            try:
-                current_time = float(row[time_idx])
-            except ValueError:
-                continue # Пропускаем битые строки
-                
-            # Проверяем, близко ли это время к нужному шагу
-            # Например, если time_step=1.0, ищем числа близкие к 1, 2, 3...
-            # И также проверяем, чтобы не сохранять дубликаты для одного шага
-            
-            # Округляем до ближайшего теоретического шага
-            target_step = round(current_time / time_step) * time_step
-            
-            if abs(current_time - target_step) < tolerance:
-                # Если мы еще не сохраняли этот шаг (или это новый шаг)
-                if abs(target_step - last_saved_step) > (time_step * 0.5):
-                    
-                    # Корректируем время (ваше условие -1.0)
-                    row[time_idx] = str(current_time - 1.0)
-                    
-                    writer.writerow(row)
-                    last_saved_step = target_step
-            
-            if i % 1_000_000 == 0:
-                print(f"Обработано {i} строк...", end='\r')
-
-    print("\nГотово! Файл сохранен.")
+        raise ValueError(f"Ошибка при чтении файла: {e}") from e
