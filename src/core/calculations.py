@@ -76,8 +76,7 @@ def calculate_ilushin_strain_vector(df,
         raise KeyError(f"Один из необходимых столбцов {required_cols} отсутствует в DataFrame.")
 
     if compressible:
-        # mean_deformation = (1/3) * (df[epto_x_col] + df[epto_y_col] + df[epto_z_col])
-        mean_deformation = 0.0
+        mean_deformation = (1/3) * (df[epto_x_col] + df[epto_y_col] + df[epto_z_col])
         e_xx = df[epto_x_col] - mean_deformation
         e_yy = df[epto_y_col] - mean_deformation
     else:
