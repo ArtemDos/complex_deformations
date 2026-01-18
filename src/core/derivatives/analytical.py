@@ -98,3 +98,41 @@ class AnalyticalDerivatives:
         v_d3 = build_vector(d3_ez, d3_et, d3_etz, d3_mean)
         
         return v_d1, v_d2, v_d3
+    
+    def get_values(self, time_local, eps_z_start=0.0, eps_theta_start=0.0):
+        """
+        Возвращает значения компонент вектора Ильюшина (Ni_1, Ni_2, Ni_3).
+        
+        Args:
+            time_local: Массив времени.
+            eps_z_start: Начальное значение Eps_Z (накопленное на 1-м этапе).
+            eps_theta_start: Начальное значение Eps_Theta (накопленное на 1-м этапе).
+        """
+        alpha = self.omega * time_local
+        c = self.c
+        a = self.a
+        sqrt3 = np.sqrt(3)
+
+        # Eps_Z = c*(cos(a) - 1) + E_z0
+        ez = c * (np.cos(alpha) - 1) + eps_z_start
+        
+        # Eps_Theta = (sqrt3/2 * a * alpha/2pi) - 0.5*c*(cos(a)-1) + E_theta0
+        linear_term = (sqrt3 / 2) * a * (alpha / (2 * np.pi))
+        et = linear_term - 0.5 * c * (np.cos(alpha) - 1) + eps_theta_start
+        
+        # Eps_ThetaZ = (sqrt3/2) * c * sin(a)
+        etz = (sqrt3 / 2) * c * np.sin(alpha)
+
+        # eps_mean = k * (ez + et)
+        emean = self.k_vol * (ez + et)
+
+        # Ni_1 = ez - mean
+        v1 = ez - emean
+        
+        # Ni_2 = (1/sqrt3)*(ez + 2et - 3mean)
+        v2 = (1 / sqrt3) * (ez + 2 * et - 3 * emean)
+        
+        # Ni_3 = (2/sqrt3)*etz
+        v3 = (2 / sqrt3) * etz
+        
+        return v1, v2, v3
