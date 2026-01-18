@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+from scipy import integrate
 
 
 def calculate_von_mises_stress(df, 
@@ -95,3 +96,46 @@ def calculate_ilushin_strain_vector(df,
     })
 
     return ilushin_df
+
+def calculate_geometry(df, suffix, time_col='Time_Local'):
+    """
+    Рассчитывает геометрические характеристики траектории (s, kappa, tau).
+    
+    Args:
+        df: DataFrame с данными.
+        suffix: Суффикс набора данных (например, '_analytic' или '_spline').
+                Функция будет искать колонки: 'dEps_1_analytic', 'd2Eps_1_analytic' и т.д.
+        time_col: Колонка времени.
+        
+    Returns:
+        tuple: (s, kappa, tau) - три массива numpy.
+    """
+
+    v = df[[f'dEps_1{suffix}', f'dEps_2{suffix}', f'dEps_3{suffix}']].values
+    a = df[[f'd2Eps_1{suffix}', f'd2Eps_2{suffix}', f'd2Eps_3{suffix}']].values
+    j = df[[f'd3Eps_1{suffix}', f'd3Eps_2{suffix}', f'd3Eps_3{suffix}']].values
+    
+    # Длина дуги s (интеграл от модуля скорости)
+    # |v| = sqrt(v1^2 + v2^2 + v3^2)
+    v_norm = np.linalg.norm(v, axis=1)
+    t = df[time_col].values
+    s = integrate.cumulative_trapezoid(v_norm, t, initial=0)
+    
+    # Кривизна (Kappa)
+    # k = |v x a| / |v|^3
+    cross_va = np.cross(v, a)
+    cross_va_norm = np.linalg.norm(cross_va, axis=1)
+    with np.errstate(divide='ignore', invalid='ignore'):
+        kappa = cross_va_norm / (v_norm**3)
+        kappa[v_norm < 1e-30] = 0.0
+        
+    # Кручение (Tau)
+    # tau = ((v x a) . j) / |v x a|^2
+    numerator = np.sum(cross_va * j, axis=1)
+    denominator = cross_va_norm**2
+    
+    with np.errstate(divide='ignore', invalid='ignore'):
+        tau = numerator / denominator
+        tau[denominator < 1e-30] = 0.0
+        
+    return s, kappa, tau
