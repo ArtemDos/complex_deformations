@@ -139,3 +139,62 @@ def calculate_geometry(df, suffix, time_col='Time_Local'):
         tau[denominator < 1e-30] = 0.0
         
     return s, kappa, tau
+
+def calculate_stress_vector(df):
+    """
+    Рассчитывает вектор напряжений Ильюшина (Sig_1, Sig_2, Sig_3)
+    на основе компонент тензора напряжений из ANSYS.
+    """
+    df = df.copy()    
+    sigma_z = df['S_ZZ']
+    sigma_t = df['S_TT']
+    sigma_tz = df['S_TZ']
+    sigma_r = 0.0
+
+    # sigma_mean = (sz + st + sr) / 3
+    sigma_mean = (sigma_z + sigma_t + sigma_r) / 3.0
+    
+    # Вычисляем девиаторы напряжений (S_ij = sigma_ij - sigma_mean)
+    S_zz = sigma_z - sigma_mean
+    S_tt = sigma_t - sigma_mean
+    S_tz = sigma_tz
+
+    # Sig_1 = 1.5 * S_zz
+    sig_1 = 1.5 * S_zz
+    
+    # Sig_2 = (sqrt(3)/2) * (S_zz + 2*S_tt)
+    sig_2 = (np.sqrt(3) / 2.0) * (S_zz + 2 * S_tt)
+    
+    # Sig_3 = sqrt(3) * S_tz
+    sig_3 = np.sqrt(3) * S_tz
+    
+    return sig_1, sig_2, sig_3
+
+def calculate_theta(df, deriv_suffix='_spline'):
+    """
+    Рассчитывает угол сближения Theta (в градусах) между 
+    вектором напряжений (Sig) и вектором скорости деформаций (dEps).
+    
+    Args:
+        df: DataFrame с напряжениями (Sig_1..3) и производными (dEps_1..3).
+        deriv_suffix: Суффикс колонок производных ('_spline' или '_analytic').
+    """
+    # Вектор напряжений
+    sig = df[['Sig_1', 'Sig_2', 'Sig_3']].values
+    
+    # Вектор скоростей деформаций
+    deps_cols = [f'dEps_1{deriv_suffix}', f'dEps_2{deriv_suffix}', f'dEps_3{deriv_suffix}']
+    deps = df[deps_cols].values
+
+    dot_prod = np.sum(sig * deps, axis=1)
+    sig_norm = np.linalg.norm(sig, axis=1)
+    deps_norm = np.linalg.norm(deps, axis=1)
+    denom = sig_norm * deps_norm
+    
+    with np.errstate(divide='ignore', invalid='ignore'):
+        cos_theta = dot_prod / denom
+        cos_theta = np.clip(cos_theta, -1.0, 1.0)
+        theta = np.degrees(np.arccos(cos_theta))
+        theta[denom < 1e-30] = 0.0
+        
+    return theta
