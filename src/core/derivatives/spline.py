@@ -89,14 +89,14 @@ def find_optimal_spline_params(df, col_name, time_col, analytic_obj, comp_idx,
                 d3_calc = splev(t, tck, der=3)
                 
                 # Считаем MSE (без краев, чтобы убрать краевые эффекты)
-                sl = slice(10, -10) 
+                sl = slice(3, -3) 
                 
                 mse1 = mean_squared_error(true_d1[sl], d1_calc[sl])
                 mse2 = mean_squared_error(true_d2[sl], d2_calc[sl])
                 mse3 = mean_squared_error(true_d3[sl], d3_calc[sl])
                 
                 # Взвешенная ошибка (Score)
-                score = 1.0 * (mse1/scale_d1**2) +  1.0 * (mse2/scale_d2**2) +  1.0 * (mse3/scale_d3**2)
+                score = 1.0 * (mse1/scale_d1**2) + 1.0 * (mse2/scale_d2**2) + 10.0 * (mse3/scale_d3**2)
                 
                 results.append({
                     'k': k,
