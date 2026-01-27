@@ -35,8 +35,9 @@ def compute_spline_derivatives(df, col_name, time_col='Time', s=0.0, k = 5):
     
     return d1, d2, d3
 
-def find_optimal_spline_params(df, col_name, time_col, analytic_obj, comp_idx, 
-                               s_range=None, k_range=None):
+def find_optimal_spline_params_mse(df, col_name, time_col, analytic_obj, comp_idx, 
+                               s_range=None, k_range=None,
+                               weights=(1.0, 1.0, 1.0)):
     """
     Ищет оптимальный параметр сглаживания s и степень полинома аппроксимации k путем перебора (Grid Search),
     минимизирует ошибку MSE для первой, второй, и третьей производных.
@@ -73,41 +74,111 @@ def find_optimal_spline_params(df, col_name, time_col, analytic_obj, comp_idx,
 
     results = []
 
-    scale_d1 = np.max(np.abs(true_d1)) if np.max(np.abs(true_d1)) > 0 else 1.0
-    scale_d2 = np.max(np.abs(true_d2)) if np.max(np.abs(true_d2)) > 0 else 1.0
-    scale_d3 = np.max(np.abs(true_d3)) if np.max(np.abs(true_d3)) > 0 else 1.0
-
     for k in k_range:
         for s in s_range:
             try:
-                # Строим сплайн степени k
                 tck = splrep(t, y, s=s, k=k)
                 
-                # Считаем производные
                 d1_calc = splev(t, tck, der=1)
                 d2_calc = splev(t, tck, der=2)
                 d3_calc = splev(t, tck, der=3)
-                
-                # Считаем MSE (без краев, чтобы убрать краевые эффекты)
-                sl = slice(3, -3) 
-                
-                mse1 = mean_squared_error(true_d1[sl], d1_calc[sl])
-                mse2 = mean_squared_error(true_d2[sl], d2_calc[sl])
-                mse3 = mean_squared_error(true_d3[sl], d3_calc[sl])
-                
-                # Взвешенная ошибка (Score)
-                score = 1.0 * (mse1/scale_d1**2) + 1.0 * (mse2/scale_d2**2) + 10.0 * (mse3/scale_d3**2)
-                
+
+                mse1 = mean_squared_error(true_d1, d1_calc)
+                mse2 = mean_squared_error(true_d2, d2_calc)
+                mse3 = mean_squared_error(true_d3, d3_calc)
+
                 results.append({
                     'k': k,
                     's': s,
-                    'score': score
+                    'mse1': mse1,
+                    'mse2': mse2,
+                    'mse3': mse3
                 })
             except Exception as e:
                 pass
 
     res_df = pd.DataFrame(results)
 
+    for col in ['mse1', 'mse2', 'mse3']:
+        res_df[f'{col}_norm'] = res_df[col] / res_df[col].max()
+    
+    w1, w2, w3 = weights
+    res_df['score'] = (w1 * res_df['mse1_norm'] + 
+                       w2 * res_df['mse2_norm'] +
+                       w3 * res_df['mse3_norm'])
+
+    best_idx = res_df['score'].idxmin()
+    best_k = int(res_df.loc[best_idx, 'k'])
+    best_s = res_df.loc[best_idx, 's']
+    
+    return best_s, best_k, res_df
+
+
+def find_optimal_spline_params_rough(df, col_name, time_col, 
+                                            s_range=None, k_range=None, 
+                                            weights=(1.0, 0.0, 0.0, 1.0)):
+    """
+    Ищет оптимальные s и k БЕЗ аналитического решения.
+    Критерий: Баланс между точностью аппроксимации (MSE самой функции)
+    и гладкостью производных (Roughness/Total Variation).
+    
+    Args:
+        weights: Кортеж весов (w_mse_func, w_rough_d1, w_rough_d2, w_rough_d3).
+    """
+
+    df_sorted = df.sort_values(by=time_col)
+    t = df_sorted[time_col].values
+    y = df_sorted[col_name].values
+    
+    if s_range is None:
+        s_range = np.logspace(-15, -2, 50)
+    if k_range is None:
+        k_range = [3, 4, 5]
+
+    results = []
+    
+    for k in k_range:
+        for s in s_range:
+            try:
+                tck = splrep(t, y, s=s, k=k)
+                y_pred = splev(t, tck, der=0)
+                d1 = splev(t, tck, der=1)
+                d2 = splev(t, tck, der=2)
+                d3 = splev(t, tck, der=3)
+
+                mse_func = mean_squared_error(y, y_pred)
+                r1 = r1 = np.sum(np.abs(np.diff(d1))) / (len(t) - 1)
+                r2 = np.sum(np.abs(np.diff(d2))) / (len(t) - 1)
+                r3 = np.sum(np.abs(np.diff(d3))) / (len(t) - 1)
+                
+                results.append({
+                    'k': k,
+                    's': s,
+                    'mse_func': mse_func,
+                    'rough_d1': r1,
+                    'rough_d2': r2,
+                    'rough_d3': r3
+                })
+            except Exception:
+                pass
+
+    res_df = pd.DataFrame(results)
+
+    for col in ['mse_func', 'rough_d1', 'rough_d2', 'rough_d3']:
+        min_v = res_df[col].min()
+        max_v = res_df[col].max()
+        if max_v > min_v:
+            res_df[f'{col}_norm'] = (res_df[col] - min_v) / (max_v - min_v)
+        else:
+            res_df[f'{col}_norm'] = 0.0
+
+    w0, w1, w2, w3 = weights
+    
+    res_df['score'] = (w0 * res_df['mse_func_norm'] + 
+                       w1 * res_df['rough_d1_norm'] +
+                       w2 * res_df['rough_d2_norm'] +
+                       w3 * res_df['rough_d3_norm'])
+    
     best_idx = res_df['score'].idxmin()
     best_k = int(res_df.loc[best_idx, 'k'])
     best_s = res_df.loc[best_idx, 's']

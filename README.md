@@ -43,7 +43,7 @@
 
 1.  Находясь в **активированном** окружении, установите все необходимые библиотеки (Pandas, Matplotlib и т.д.):
     ```bash
-    pip install pandas numpy matplotlib scipy ipykernel statsmodels scikit-learn
+    pip install pandas numpy matplotlib scipy ipykernel statsmodels scikit-learn torch
     ```
 
 
