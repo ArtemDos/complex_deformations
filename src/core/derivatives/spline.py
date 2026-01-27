@@ -2,7 +2,6 @@ import numpy as np
 import pandas as pd
 from scipy.interpolate import splrep, splev
 from sklearn.metrics import mean_squared_error
-from statsmodels.tsa.seasonal import seasonal_decompose
 
 def compute_spline_derivatives(df, col_name, time_col='Time', s=0.0, k = 5):
     """
