@@ -147,7 +147,7 @@ def find_optimal_spline_params_rough(df, col_name, time_col,
                 d3 = splev(t, tck, der=3)
 
                 mse_func = mean_squared_error(y, y_pred)
-                r1 = r1 = np.sum(np.abs(np.diff(d1))) / (len(t) - 1)
+                r1 = np.sum(np.abs(np.diff(d1))) / (len(t) - 1)
                 r2 = np.sum(np.abs(np.diff(d2))) / (len(t) - 1)
                 r3 = np.sum(np.abs(np.diff(d3))) / (len(t) - 1)
                 
