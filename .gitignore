@@ -15,6 +15,7 @@
 !/.gitignore
 !/README.md
 !P29/ideal_vint/*.txt
+!P29/experimental_vint/*.txt
 !*.pdf
 # !/src/**
 
