@@ -4,7 +4,7 @@ import matplotlib.cm as cm
 import numpy as np
 
 
-def plot_xy(data_pairs, x_col, y_cols, title='', exp_data=None):
+def plot_xy(data_pairs, x_col, y_cols, title='', exp_data=None, figsize=(6, 3.5)):
     """
     Строит сравнительный 2D-график с разделением по цвету (для Y-величин) 
     и стилю линии (для наборов данных).
@@ -27,7 +27,7 @@ def plot_xy(data_pairs, x_col, y_cols, title='', exp_data=None):
     if exp_data and (not isinstance(exp_data, tuple) or len(exp_data) != 2):
         raise TypeError("Аргумент 'exp_data' должен быть кортежем вида ('exp_name', DataFrame).")
 
-    plt.figure(figsize=(6, 3.5))
+    plt.figure(figsize)
     
     is_multi_y = len(y_cols) > 1
     if is_multi_y:
