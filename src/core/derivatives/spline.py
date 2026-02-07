@@ -61,7 +61,7 @@ def find_optimal_spline_params_mse(df, col_name, time_col, analytic_obj, comp_id
     t = df_sorted[time_col].values
     y = df_sorted[col_name].values
 
-    d1_true_all, d2_true_all, d3_true_all = analytic_obj.get_derivatives(t)
+    d1_true_all, d2_true_all, d3_true_all = analytic_obj.get_all_derivatives(t)
     true_d1 = d1_true_all[comp_idx]
     true_d2 = d2_true_all[comp_idx]
     true_d3 = d3_true_all[comp_idx]
