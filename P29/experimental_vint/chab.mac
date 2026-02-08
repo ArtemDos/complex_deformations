@@ -13,6 +13,21 @@ nu = param_buf(1)
 
 *DEL, param_buf ! Удаляем буфер
 
+*DIM, chab_buf, ARRAY, 7 ! Массив для 7 параметров шабоши
+
+*VREAD, chab_buf(1), chab_params, txt, , , 
+(F20.0)
+
+sig_yield = chab_buf(1)
+c1 = chab_buf(2)
+gam1 = chab_buf(3)
+c2 = chab_buf(4)
+gam2 = chab_buf(5)
+c3 = chab_buf(6)
+gam3 = chab_buf(7)
+
+*DEL, chab_buf
+
 exp_num_points = 104 ! Количество шагов в эксперименте
 
 ! Загружаем днформации e_zz из экперимента
@@ -32,17 +47,17 @@ size=1 !! Размер элемента в мм
 /PREP7
 ET,1,PLANE182
 MP,EX,1,2.05e5 !!! МПа
-MP,PRXY,1,0.29
+MP,PRXY,1,nu
 TB,CHAB, 1, 1, 3  ! 3 слагаемых, нелинейная модель
 TBTEMP,0
 ! Предел текучести (начальный радиус поверхности)
-TBDATA,1, 270
+TBDATA,1, sig_yield
 ! Параметры для 1-го слагаемого (C1, gamma1)
-TBDATA,2, 1e5, 1e3
+TBDATA,2, c1, gam1
 ! Параметры для 2-го слагаемого (C2, gamma2)
-TBDATA,4, 1e4, 40
+TBDATA,4, c2, gam2
 ! Параметры для 3-го слагаемого (C3, gamma3)
-TBDATA,6, 1e3, 40
+TBDATA,6, c3, gam3
 
 ! узлы элемента
 N,1,0,0,0
