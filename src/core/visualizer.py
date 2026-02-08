@@ -27,7 +27,7 @@ def plot_xy(data_pairs, x_col, y_cols, title='', exp_data=None, figsize=(6, 3.5)
     if exp_data and (not isinstance(exp_data, tuple) or len(exp_data) != 2):
         raise TypeError("Аргумент 'exp_data' должен быть кортежем вида ('exp_name', DataFrame).")
 
-    plt.figure(figsize)
+    plt.figure(figsize=figsize)
     
     is_multi_y = len(y_cols) > 1
     if is_multi_y:
