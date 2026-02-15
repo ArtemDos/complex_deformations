@@ -93,7 +93,7 @@ def find_optimal_spline_params_mse(df, col_name, time_col, analytic_obj, comp_id
                     'mse2': mse2,
                     'mse3': mse3
                 })
-            except Exception as e:
+            except Exception:
                 pass
 
     res_df = pd.DataFrame(results)

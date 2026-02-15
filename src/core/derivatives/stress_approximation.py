@@ -60,7 +60,7 @@ class VolumetricModel:
         return d1, d2
 
 
-class SemiEmpiricalGeometry:
+class GeometricProperties:
     """
     Расчет геометрических характеристик (кривизна, кручение)
     с учетом поправки на сжимаемость из VolumetricModel.
@@ -91,9 +91,9 @@ class SemiEmpiricalGeometry:
         d2_ez = -self.c * lam**2 * np.cos(arg_kin)
         d3_ez =  self.c * lam**3 * np.sin(arg_kin)
         
-        d1_etz = (sqrt3/2) * self.c * lam * np.cos(arg_kin)
-        d2_etz = -(sqrt3/2) * self.c * lam**2 * np.sin(arg_kin)
-        d3_etz = -(sqrt3/2) * self.c * lam**3 * np.cos(arg_kin)
+        d1_etz = -(sqrt3/2) * self.c * lam * np.cos(arg_kin)
+        d2_etz = (sqrt3/2) * self.c * lam**2 * np.sin(arg_kin)
+        d3_etz = (sqrt3/2) * self.c * lam**3 * np.cos(arg_kin)
         
         # Ni_2 ideal (линейная часть)
         d1_ni2_id = self.a / L_turn
@@ -104,7 +104,7 @@ class SemiEmpiricalGeometry:
         # Мы берем производные от Sigma_mean по s и умножаем на k_mat, чтобы получить d(Eps_mean)/ds
         d1_sig, d2_sig = self.vol_model.get_derivatives_s(s_array)
         
-        # Нам нужна еще 3-я производная для кручения
+        # 3-я производная для кручения
         p, w, phi, b1, b2 = self.vol_model.params
         d3_sig = p * (w**3) * np.sin(w * s_array + phi)
         
@@ -144,3 +144,26 @@ class SemiEmpiricalGeometry:
         tau = num_t / den_t
         
         return kappa, tau
+    
+    def get_derivatives(self, s_array):
+        """
+        Возвращает скорость вектора деформаций.
+        """
+        L_turn = np.sqrt(self.a**2 + (2 * np.pi * self.c)**2)
+        lam = (2 * np.pi) / L_turn  # lambda = d(alpha)/ds
+        
+        arg_kin = lam * s_array
+        sqrt3 = np.sqrt(3)
+        d1_ez = -self.c * lam * np.sin(arg_kin)
+        d1_etz = -(sqrt3/2) * self.c * lam * np.cos(arg_kin)
+        d1_ni2_id = self.a / L_turn
+
+        d1_sig, _ = self.vol_model.get_derivatives_s(s_array)
+        
+        d1_delta = d1_sig * self.k_mat
+
+        v1 = d1_ez - d1_delta
+        v2 = d1_ni2_id - sqrt3 * d1_delta
+        v3 = (2/sqrt3) * d1_etz
+
+        return [v1, v2, v3]
