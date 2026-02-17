@@ -13,7 +13,7 @@ nu = param_buf(1)
 
 *DEL, param_buf ! Удаляем буфер
 
-*DIM, voce_hardening_buf, ARRAY, 9
+*DIM, voce_hardening_buf, ARRAY, 10
 
 *VREAD, voce_hardening_buf(1), voce_hardening_params, txt, , , 
 (F20.0)
@@ -26,8 +26,9 @@ gam2 = voce_hardening_buf(5)
 c3 = voce_hardening_buf(6)
 gam3 = voce_hardening_buf(7)
 
-R_inf = voce_hardening_buf(8)   ! Максимальное расширение сферы
-b_voce = voce_hardening_buf(9)  ! Скорость расширения
+R_0 = voce_hardening_buf(8) ! Линейный тренд
+R_inf = voce_hardening_buf(9)   ! Максимальное расширение сферы
+b_voce = voce_hardening_buf(10)  ! Скорость расширения
 
 *DEL, voce_hardening_buf
 
@@ -55,12 +56,12 @@ MP,PRXY,1,nu
 ! Кинематическое упрочнение (Chaboche)
 TB,CHAB,1,1,3
 TBTEMP,0
-TBDATA,1, c1, gam1, c2, gam2, c3, gam3
+TBDATA, , 0, c1, gam1, c2, gam2, c3, gam3
 
 ! Изотропное упрочнение (Voce)
 TB,NLISO,1,1,VOCE
 TBTEMP,0
-TBDATA,1, sig_yield, R_inf, b_voce, 0
+TBDATA, , sig_yield, R_0, R_inf, b_voce, ,
 
 ! узлы элемента
 N,1,0,0,0
@@ -72,9 +73,6 @@ E,1,2,3,4
 
 /SOLU
 
-NLGEOM, ON  ! Включить большие деформации (помогает сходимости)
-NROPT, FULL ! Полный метод Ньютона-Рафсона
-PRED, ON    ! Включить предсказатель (ускоряет)
 
 ! 1-ый шаг - решение с нулевыми граничными условиями
 D,ALL,ALL,0
