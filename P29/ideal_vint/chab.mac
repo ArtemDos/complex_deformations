@@ -34,7 +34,7 @@ cc = param_buf(1) ! Для эксперимента П.29
 
 *VREAD, param_buf(1), n_turns, txt, , , 
 (F20.0)
-nv = NINT(param_buf(1)) ! Количество витков
+nv = param_buf(1) ! Количество витков
 
 *DEL, param_buf ! Удаляем буфер
 
