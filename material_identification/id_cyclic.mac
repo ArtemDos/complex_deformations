@@ -1,0 +1,85 @@
+/CLEAR, NOSTART
+/FILENAME, id_cyclic
+
+! --- ЧТЕНИЕ ГЛОБАЛЬНЫХ ПАРАМЕТРОВ ---
+*DIM, param_buf, ARRAY, 1
+*VREAD, param_buf(1), nu, txt, , , 
+(F20.0)
+nu = param_buf(1)
+*DEL, param_buf
+
+! --- ЧТЕНИЕ ПАРАМЕТРОВ ШАБОША ---
+*DIM, chab_buf, ARRAY, 7
+*VREAD, chab_buf(1), chab_params, txt, , , 
+(F20.0)
+sig_yield = chab_buf(1)
+c1 = chab_buf(2)
+gam1 = chab_buf(3)
+c2 = chab_buf(4)
+gam2 = chab_buf(5)
+c3 = chab_buf(6)
+gam3 = chab_buf(7)
+*DEL, chab_buf
+
+! --- ЗАГРУЗКА ТАБЛИЦ ЭКСПЕРИМЕНТА ---
+exp_num_points = 35
+*DIM, exp_ezz, TABLE, exp_num_points   
+*TREAD, exp_ezz, 'ezz_cyc', 'csv', ' ', 1
+*DIM, exp_ett, TABLE, exp_num_points   
+*TREAD, exp_ett, 'ett_cyc', 'csv', ' ', 1
+
+size=1
+
+/PREP7
+ET,1,PLANE182
+MP,EX,1,2.05e5
+MP,PRXY,1,nu
+TB,CHAB, 1, 1, 3
+TBTEMP,0
+TBDATA,1, sig_yield
+TBDATA,2, c1, gam1
+TBDATA,4, c2, gam2
+TBDATA,6, c3, gam3
+
+N,1,0,0,0
+N,2,size,0,0
+N,3,size,size,0
+N,4,0,size,0
+E,1,2,3,4
+
+/SOLU
+D,ALL,ALL,0
+SOLVE
+OUTRES,ALL,LAST
+
+D,1,UX,0 
+D,1,UY,0
+
+*DO, i, 1, exp_num_points, 1
+	epsx = exp_ett(i) / 100.0
+	epsy = exp_ezz(i) / 100.0
+
+	D,2,UX,epsx $ D,2,UY,0
+	D,3,UX,epsx $ D,3,UY,epsy
+	D,4,UX,0    $ D,4,UY,epsy
+
+	TIME, i
+	NSUBST,1,0,0
+	SOLVE
+*ENDDO
+FINISH
+
+/POST26
+ESOL,2,1,3,S,Y
+STORE,MERGE
+*GET, n_raw, VARI, 1, NSETS
+*DIM, v_s, ARRAY, n_raw
+VGET, v_s(1), 2
+
+*CFOPEN, cyclic_out, csv
+*VWRITE, 'Stress'
+(A)
+*VWRITE, v_s(1)
+(E14.7)
+*CFCLOS
+FINISH
