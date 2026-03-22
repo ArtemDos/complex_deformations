@@ -1,0 +1,13 @@
+# Установка из корня репозитория (подтягивает зависимости из pyproject.toml):
+#   pip install -r requirements.txt
+#
+# Нейросетевые ноутбуки (research_nn_optimization, core/derivatives/neural.py):
+#   pip install -e ".[torch]"
+#
+# Классический Jupyter Notebook / Lab (опционально):
+#   pip install -e ".[jupyter]"
+#
+# Всё сразу:
+#   pip install -e ".[all]"
+
+-e .

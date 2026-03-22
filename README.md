@@ -14,56 +14,85 @@
     - `reader.py`: Модуль для загрузки и фильтрации данных Ansys.
     - `visualizer.py`: Модуль для визуализации данных.
     - `calculations.py`: Модуль для вспомогательных вычислений.
-- `setup.py`: Файл для установки проекта как Python-пакета.
+- `pyproject.toml`: Метаданные пакета и список зависимостей.
+- `requirements.txt`: Установка проекта в режиме редактирования одной командой.
 - `P29/`: Анализ экперимента П29.
   - `experimental_vint/`: Реализация численного экперимента реальной траектории деформирования.
   - `ideal_vint/`: Реализация численного экперимента идеальной траектории деформирования.
 
 ## Инструкция по установке и запуску
 
-Для работы с проектом необходимо настроить изолированное виртуальное окружение Python.
+Для работы с проектом необходимо настроить изолированное виртуальное окружение Python (Python 3.9+).
 
 ### Шаг 1: Создание и активация виртуального окружения
 
-1.  **Откройте терминал** в корневой папке проекта `complex_deformations`.
+1. **Откройте терминал** в корневой папке проекта.
 
-2.  **Создайте виртуальное окружение**:
-    ```bash
-    python -m venv .venv
-    ```
+2. **Создайте виртуальное окружение**:
+   ```bash
+   python3 -m venv .venv
+   ```
+   (на Windows вместо `python3` часто используют `python`.)
 
-3.  **Активируйте окружение.**:
-        ```bash
-        source .venv/Scripts/activate
-        ```
+3. **Активируйте окружение** (в начале строки появится префикс `(.venv)`):
 
-    После активации в начале командной строки появится префикс `(.venv)`.
+   - **macOS / Linux:**
+     ```bash
+     source .venv/bin/activate
+     ```
+   - **Windows (cmd):**
+     ```cmd
+     .venv\Scripts\activate.bat
+     ```
+   - **Windows (PowerShell):**
+     ```powershell
+     .venv\Scripts\Activate.ps1
+     ```
 
-### Шаг 2: Установка зависимостей
+### Шаг 2: Установка зависимостей и пакета
 
-1.  Находясь в **активированном** окружении, установите все необходимые библиотеки (Pandas, Matplotlib и т.д.):
-    ```bash
-    pip install pandas numpy matplotlib scipy ipykernel statsmodels scikit-learn torch
-    ```
+Находясь в **активированном** окружении и в **корне репозитория**:
 
+```bash
+pip install -U pip setuptools wheel
+pip install -r requirements.txt
+```
 
-### Шаг 3: Установка проекта в режиме редактирования
-1.  Убедитесь, что вы находитесь в корневой папке проекта и окружение активировано.
-2.  Выполните команду:
-    ```bash
-    pip install -e .
-    ```
+Если `pip install -e .` или `pip install -r requirements.txt` ругается на отсутствие `setup.py` или не поддерживает editable из `pyproject.toml`, обновите инструменты в виртуальном окружении (команда выше) и повторите установку.
 
-### Шаг 4: Регистрация окружения в Jupyter
-1.  Выполните команду:
-    ```bash
-    python -m ipykernel install --user --name="complex_deformations_env"
-    ```
-    Это создаст новое "ядро" (Kernel) для Jupyter с именем `complex_deformations_env`.
+Это установит проект в режиме редактирования (`-e .`) и все зависимости из `pyproject.toml` (pandas, numpy, matplotlib, scipy, scikit-learn, ipykernel, psutil).
 
-### Шаг 5: Запуск и работа в Jupyter Notebook
+**Дополнительно (по необходимости):**
 
-1.  **Запустите VS Code** или вашу среду для работы с Jupyter.
-2.  **Откройте ваш ноутбук**, например, `analysis.ipynb`.
-3.  **Выберите правильное ядро:** В правом верхнем углу интерфейса Jupyter выберите ядро `complex_deformations_env`.
-4.  **Выполняйте ячейки:** Теперь вы можете выполнять все ячейки ноутбука. Команда `from core.reader import load_and_filter_ansys_csv` будет работать корректно, так как ноутбук использует окружение, в котором ваш проект установлен как пакет.
+- Ноутбуки с PyTorch (`P29/ideal_vint/research_nn_optimization.ipynb`, модуль `core/derivatives/neural.py`):
+  ```bash
+  pip install -e ".[torch]"
+  ```
+- Полноценный Jupyter Notebook / JupyterLab:
+  ```bash
+  pip install -e ".[jupyter]"
+  ```
+- Всё опциональное сразу:
+  ```bash
+  pip install -e ".[all]"
+  ```
+
+Альтернатива без `requirements.txt`:
+
+```bash
+pip install -e .
+```
+
+### Шаг 3: Регистрация окружения в Jupyter
+
+```bash
+python -m ipykernel install --user --name=complex_deformations_env
+```
+
+Будет доступно ядро с именем `complex_deformations_env`.
+
+### Шаг 4: Запуск и работа в Jupyter Notebook
+
+1. Откройте VS Code или Jupyter Lab и нужный `.ipynb` (например, `analysis.ipynb`).
+2. Выберите ядро **complex_deformations_env** (или другое, где выполнен `pip install -e .`).
+3. Импорты вида `from core.reader import ...` работают, если ядро использует это виртуальное окружение.
