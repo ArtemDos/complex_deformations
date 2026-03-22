@@ -1,4 +1,3 @@
-import polars as pl
 import pandas as pd
 import numpy as np
 import csv
@@ -77,7 +76,6 @@ def load_experimental_data(folder_path,
         FileNotFoundError: Если папка или один из файлов не найден.
         ValueError: Если произошла ошибка при чтении или объединении файлов.
     """
-    
     if not os.path.isdir(folder_path):
         raise FileNotFoundError(f"Папка не найдена по пути: '{folder_path}'")
 

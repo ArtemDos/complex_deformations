@@ -170,6 +170,96 @@ def calculate_stress_vector(df):
     
     return sig_1, sig_2, sig_3
 
+
+def ilushin_stress_vector_modulus(sig_1, sig_2, sig_3):
+    """
+    Модуль (евклидова норма) вектора напряжений Ильюшина √(Sig_1² + Sig_2² + Sig_3²).
+    Принимает Series, ndarray или скаляры (broadcast).
+    """
+    return np.sqrt(np.asarray(sig_1) ** 2 + np.asarray(sig_2) ** 2 + np.asarray(sig_3) ** 2)
+
+
+def angle_between_ilushin_stress_vectors(
+    sig_1_a, sig_2_a, sig_3_a,
+    sig_1_b, sig_2_b, sig_3_b,
+    degrees=False,
+):
+    """
+    Угол между двумя векторами напряжений Ильюшина: arccos( (a·b) / (|a||b|) ).
+    """
+    a1, a2, a3 = map(np.asarray, (sig_1_a, sig_2_a, sig_3_a))
+    b1, b2, b3 = map(np.asarray, (sig_1_b, sig_2_b, sig_3_b))
+    dot = a1 * b1 + a2 * b2 + a3 * b3
+    na = ilushin_stress_vector_modulus(a1, a2, a3)
+    nb = ilushin_stress_vector_modulus(b1, b2, b3)
+    denom = na * nb
+    with np.errstate(divide='ignore', invalid='ignore'):
+        cos_t = np.clip(dot / denom, -1.0, 1.0)
+        phi = np.arccos(cos_t)
+    if degrees:
+        phi = np.degrees(phi)
+    return phi
+
+
+def relative_ilushin_modulus_difference(norm_numeric, norm_experimental):
+    """
+    Относительная разность модулей: (|σ_num| - |σ_exp|) / |σ_exp|.
+    """
+    return (np.asarray(norm_numeric) - np.asarray(norm_experimental)) / np.asarray(norm_experimental)
+
+
+def add_ilushin_mc_exp_comparison_metrics(
+    df,
+    mc_suffix='_mc',
+    exp_suffix='_exp',
+    angle_col='phi',
+    relative_modulus_col='relative_error',
+    degrees=False,
+):
+    """
+    Добавляет в уже объединённый DataFrame угол между векторами расчёта и эксперимента
+    и относительную разность модулей. Ожидаются колонки Sig_1{mc_suffix}, Sig_1{exp_suffix}, ...
+    """
+    df = df.copy()
+    norm_mc = ilushin_stress_vector_modulus(
+        df[f'Sig_1{mc_suffix}'], df[f'Sig_2{mc_suffix}'], df[f'Sig_3{mc_suffix}']
+    )
+    norm_exp = ilushin_stress_vector_modulus(
+        df[f'Sig_1{exp_suffix}'], df[f'Sig_2{exp_suffix}'], df[f'Sig_3{exp_suffix}']
+    )
+    df[angle_col] = angle_between_ilushin_stress_vectors(
+        df[f'Sig_1{mc_suffix}'], df[f'Sig_2{mc_suffix}'], df[f'Sig_3{mc_suffix}'],
+        df[f'Sig_1{exp_suffix}'], df[f'Sig_2{exp_suffix}'], df[f'Sig_3{exp_suffix}'],
+        degrees=degrees,
+    )
+    df[relative_modulus_col] = relative_ilushin_modulus_difference(norm_mc, norm_exp)
+    return df
+
+
+def merge_and_compare_ilushin_stress(
+    numerical_df,
+    experimental_df,
+    on='Time_Local',
+    suffixes=('_mc', '_exp'),
+    angle_col='phi',
+    relative_modulus_col='relative_error',
+    degrees=False,
+):
+    """
+    Объединяет расчётный и экспериментальный DataFrame по ключу `on` (как pd.merge)
+    и добавляет столбцы угла между векторами Ильюшина и относительной разности модулей.
+    """
+    merged = pd.merge(numerical_df, experimental_df, on=on, suffixes=suffixes)
+    return add_ilushin_mc_exp_comparison_metrics(
+        merged,
+        mc_suffix=suffixes[0],
+        exp_suffix=suffixes[1],
+        angle_col=angle_col,
+        relative_modulus_col=relative_modulus_col,
+        degrees=degrees,
+    )
+
+
 def calculate_theta(df, deriv_suffix='_spline'):
     """
     Рассчитывает угол сближения Theta (в градусах) между 
