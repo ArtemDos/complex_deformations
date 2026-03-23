@@ -30,10 +30,15 @@ def plot_xy(data_pairs, x_col, y_cols, title='', exp_data=None, figsize=(6, 3.5)
     plt.figure(figsize=figsize)
     
     is_multi_y = len(y_cols) > 1
+    n_pairs = len(data_pairs)
+    n_y = len(y_cols)
     if is_multi_y:
-        y_colors = cm.get_cmap('tab10')(np.linspace(0, 1, len(y_cols)))
+        n_series = n_pairs * n_y + (n_y if exp_data else 0)
+        cmap_name = "tab20" if n_series > 10 else "tab10"
+        series_colors = cm.get_cmap(cmap_name)(np.linspace(0, 1, max(n_series, 1)))
+        color_idx = 0
     else:
-        data_colors = cm.get_cmap('tab10')(np.linspace(0, 1, len(data_pairs) + (1 if exp_data else 0)))
+        data_colors = cm.get_cmap("tab10")(np.linspace(0, 1, n_pairs + (1 if exp_data else 0)))
     styles = ['-', '--', '-.', ':']
     line_styles = {name: styles[i % len(styles)] for i, (name, df) in enumerate(data_pairs)}
     for i, (name, df) in enumerate(data_pairs):
@@ -44,8 +49,12 @@ def plot_xy(data_pairs, x_col, y_cols, title='', exp_data=None, figsize=(6, 3.5)
         for j, y_col in enumerate(y_cols):
             if x_col not in df.columns or y_col not in df.columns:
                 raise KeyError(f"В DataFrame для '{name}' отсутствует один из столбцов: '{x_col}' или '{y_col}'.")
-            label = f'{name} - {y_col}' if len(data_pairs) > 1 or len(y_cols) > 1 else y_col
-            color = y_colors[j] if is_multi_y else data_colors[i]
+            label = f'{name} - {y_col}' if n_pairs > 1 or n_y > 1 else y_col
+            if is_multi_y:
+                color = series_colors[color_idx]
+                color_idx += 1
+            else:
+                color = data_colors[i]
             linewidth = 2.5 if line_style == '-' else 2.0
             plt.plot(df[x_col], df[y_col], color=color, linestyle=line_style, label=label, lw=linewidth)
         
@@ -57,7 +66,11 @@ def plot_xy(data_pairs, x_col, y_cols, title='', exp_data=None, figsize=(6, 3.5)
         for j, y_col in enumerate(y_cols):
             if x_col not in df_exp.columns or y_col not in df_exp.columns:
                 raise KeyError(f"В DataFrame для эксперимента '{exp_name}' отсутствует один из столбцов: '{x_col}' или '{y_col}'.")
-            color = y_colors[j] if is_multi_y else data_colors[len(data_pairs)]
+            if is_multi_y:
+                color = series_colors[color_idx]
+                color_idx += 1
+            else:
+                color = data_colors[len(data_pairs)]
             label = f'{exp_name} - {y_col}' if len(data_pairs) > 0 or len(y_cols) > 1 else exp_name
             plt.scatter(
                 df_exp[x_col],
