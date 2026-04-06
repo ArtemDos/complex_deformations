@@ -1,5 +1,5 @@
 /CLEAR, NOSTART
-/FILENAME, chab
+/FILENAME, chab_incompressible
 
 *DIM, param_buf, ARRAY, 1 ! Создаем временный массив для чтения из одного элемента
 
