@@ -140,28 +140,49 @@ def calculate_geometry(df, suffix, time_col='Time_Local'):
         
     return s, kappa, tau
 
-
-def ilushin_strain_arc_length_by_time(
+def ilushin_strain_path_length(
     df,
     time_col='Time',
+    *,
+    use_existing_ilushin_strains=False,
     compressible=False,
-    ilushin_strain_df=None,
 ):
     """
     Длина дуги s в пространстве деформаций Ильюшина: кумулятивная сумма евклидовых
     приращений между соседними точками (по возрастанию времени):
     ds_k = sqrt(ΔEps_1² + ΔEps_2² + ΔEps_3²), s_0 = 0.
 
-    Если передан ``ilushin_strain_df`` (результат ``calculate_ilushin_strain_vector`` для того же ``df``),
-    повторный расчёт деформаций Ильюшина не выполняется.
+    Args:
+        df: Исходный кадр данных.
+        time_col: Столбец времени для сортировки и в выходном кадре.
+        use_existing_ilushin_strains: Если False — внутри вызывается
+            ``calculate_ilushin_strain_vector(df, compressible=...)``.
+            Если True — из ``df`` берутся ``Eps_1``, ``Eps_2``, ``Eps_3`` и ``time_col``;
+            ``compressible`` не используется.
 
     Returns:
         pd.DataFrame: столбцы `time_col` и ``s``, отсортировано по времени.
     """
-    if ilushin_strain_df is None:
-        il = calculate_ilushin_strain_vector(df, compressible=compressible)
+    if use_existing_ilushin_strains:
+        required = [time_col, 'Eps_1', 'Eps_2', 'Eps_3']
+        missing = [c for c in required if c not in df.columns]
+        if missing:
+            raise KeyError(
+                f"При use_existing_ilushin_strains=True в df должны быть столбцы {required}; "
+                f"нет: {missing}"
+            )
+        il = df[required].copy()
     else:
-        il = ilushin_strain_df
+        il = calculate_ilushin_strain_vector(df, compressible=compressible)
+        if time_col not in il.columns:
+            if time_col in df.columns and len(df) == len(il):
+                il = il.copy()
+                il[time_col] = df[time_col].to_numpy()
+            else:
+                raise KeyError(
+                    f"После calculate_ilushin_strain_vector в кадре нет '{time_col}'. "
+                    f"Задайте time_col='Time' либо добавьте в df столбец '{time_col}' той же длины."
+                )
     il = il.sort_values(by=time_col).reset_index(drop=True)
     d1 = np.diff(il['Eps_1'].to_numpy())
     d2 = np.diff(il['Eps_2'].to_numpy())
