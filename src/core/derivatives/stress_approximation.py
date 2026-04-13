@@ -135,3 +135,31 @@ class GeometricProperties:
         v2 = df["dEps_2_analytic"].to_numpy(dtype=float) - sqrt3 * d1_delta
         v3 = df["dEps_3_analytic"].to_numpy(dtype=float)
         return [v1, v2, v3]
+
+    def get_values(self, df, x_array):
+        """
+        Компоненты Ильюшина из df плюс объёмная поправка по среднему напряжению.
+        """
+        if not isinstance(df, pd.DataFrame):
+            raise TypeError("get_values expects a pandas.DataFrame.")
+
+        cols = ("Eps_1_analytic", "Eps_2_analytic", "Eps_3_analytic")
+        for c in cols:
+            if c not in df.columns:
+                raise KeyError(f"DataFrame missing column {c!r}.")
+
+        x = np.asarray(x_array, dtype=float)
+
+        sqrt3 = np.sqrt(3)
+        e1 = df["Eps_1_analytic"].to_numpy(dtype=float, copy=True)
+        e2 = df["Eps_2_analytic"].to_numpy(dtype=float, copy=True)
+        e3 = df["Eps_3_analytic"].to_numpy(dtype=float, copy=True)
+
+        sigma_m = np.asarray(self.vol_model.predict(x), dtype=float)
+  
+
+        delta_eps = self.k_mat * sigma_m
+        e1 = e1 + delta_eps
+        e2 = e2 + sqrt3 * delta_eps
+
+        return e1, e2, e3

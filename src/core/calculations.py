@@ -45,7 +45,7 @@ def calculate_ilushin_strain_vector(df,
                                     epto_y_col='EPTO_ZZ',
                                     epto_z_col='EPTO_RR',
                                     epto_xy_col='EPTO_TZ',
-                                    compressible=True):
+                                    use_deviatoric_strains=True):
     """
     Рассчитывает компоненты вектора деформаций Ильюшина на основе полных деформаций.
     Возвращает новый DataFrame с результатами.
@@ -56,9 +56,7 @@ def calculate_ilushin_strain_vector(df,
         epto_y_col (str): Название столбца с полной деформацией по Y.
         epto_z_col (str): Название столбца с полной деформацией по Z.
         epto_xy_col (str): Название столбца с тензорной сдвиговой деформацией.
-        compressible (bool): Флаг, указывающий, как считать.
-                             True (по умолч.): Рассчитывает девиатор, учитывая сжимаемость.
-                             False: Игнорирует сжимаемость (e_ij = ε_ij).
+        use_deviatoric_strains (bool): Флаг, указывающий, учитывая девиатор деформаций при расчете.
 
     Returns:
         pd.DataFrame: Новый DataFrame со столбцами 'Time', 'Eps_1', 'Eps_2', 'Eps_3'.
@@ -68,13 +66,13 @@ def calculate_ilushin_strain_vector(df,
     """
 
     required_cols = ['Time', epto_x_col, epto_y_col, epto_xy_col]
-    if compressible:
+    if use_deviatoric_strains:
         required_cols.append(epto_z_col)
         
     if not all(col in df.columns for col in required_cols):
         raise KeyError(f"Один из необходимых столбцов {required_cols} отсутствует в DataFrame.")
 
-    if compressible:
+    if use_deviatoric_strains:
         mean_deformation = (1/3) * (df[epto_x_col] + df[epto_y_col] + df[epto_z_col])
         e_xx = df[epto_x_col] - mean_deformation
         e_yy = df[epto_y_col] - mean_deformation
@@ -82,7 +80,7 @@ def calculate_ilushin_strain_vector(df,
         e_xx = df[epto_x_col]
         e_yy = df[epto_y_col]
 
-    e_xy = df[epto_xy_col] / 2.0
+    e_xy = df[epto_xy_col]
 
     Eps_1 = e_yy
     Eps_2 = (1 / np.sqrt(3)) * (e_yy + 2 * e_xx)
@@ -145,7 +143,7 @@ def ilushin_strain_path_length(
     time_col='Time',
     *,
     use_existing_ilushin_strains=False,
-    compressible=False,
+    use_deviatoric_strains=False,
 ):
     """
     Длина дуги s в пространстве деформаций Ильюшина: кумулятивная сумма евклидовых
@@ -156,9 +154,9 @@ def ilushin_strain_path_length(
         df: Исходный кадр данных.
         time_col: Столбец времени для сортировки и в выходном кадре.
         use_existing_ilushin_strains: Если False — внутри вызывается
-            ``calculate_ilushin_strain_vector(df, compressible=...)``.
+            ``calculate_ilushin_strain_vector(df, use_deviatoric_strains=...)``.
             Если True — из ``df`` берутся ``Eps_1``, ``Eps_2``, ``Eps_3`` и ``time_col``;
-            ``compressible`` не используется.
+            ``use_deviatoric_strains`` не используется.
 
     Returns:
         pd.DataFrame: столбцы `time_col` и ``s``, отсортировано по времени.
@@ -173,7 +171,7 @@ def ilushin_strain_path_length(
             )
         il = df[required].copy()
     else:
-        il = calculate_ilushin_strain_vector(df, compressible=compressible)
+        il = calculate_ilushin_strain_vector(df, use_deviatoric_strains=use_deviatoric_strains)
         if time_col not in il.columns:
             if time_col in df.columns and len(df) == len(il):
                 il = il.copy()
@@ -225,19 +223,21 @@ def calculate_stress_vector(df):
     return sig_1, sig_2, sig_3
 
 
-def prepare_ilushin_path_dataset(df, compressible=False, time_col='Time'):
+def prepare_ilushin_path_dataset(df, use_deviatoric_strains=False, time_col='Time'):
     """
     Один кадр (эксперимент или расчёт): добавляет столбцы деформаций Ильюшина ``Eps_*``,
     длину дуги ``s`` вдоль этой траектории и напряжения Ильюшина ``Sig_*``.
     """
     out = df.copy()
-    il = calculate_ilushin_strain_vector(out, compressible=compressible)
+    il = calculate_ilushin_strain_vector(out, use_deviatoric_strains=use_deviatoric_strains)
     out['Eps_1'] = il['Eps_1'].to_numpy()
     out['Eps_2'] = il['Eps_2'].to_numpy()
     out['Eps_3'] = il['Eps_3'].to_numpy()
-    s_df = ilushin_strain_arc_length_by_time(
-        out, time_col=time_col, compressible=compressible, ilushin_strain_df=il
-    )
+    s_df = ilushin_strain_path_length(
+      out,
+      time_col=time_col,
+      use_existing_ilushin_strains=True,
+  )
     out = out.merge(s_df, on=time_col, how='inner')
     sig1, sig2, sig3 = calculate_stress_vector(out)
     out['Sig_1'] = sig1.to_numpy()
@@ -246,11 +246,10 @@ def prepare_ilushin_path_dataset(df, compressible=False, time_col='Time'):
     return out
 
 
-def ilushin_stress_metrics_at_experiment_times(
+def ilushin_stress_metrics_at_experiment(
     experimental_df,
     numerical_df,
     time_col='Time',
-    compressible=False,
     direction='nearest',
     angle_col='phi',
     relative_modulus_col='relative_error',
@@ -261,18 +260,10 @@ def ilushin_stress_metrics_at_experiment_times(
 
     - Сопоставление по времени: к каждой строке эксперимента подставляется ближайший по ``time_col``
       шаг расчёта (``pd.merge_asof``).
-    - В каждой строке: ``s`` — накопленная длина дуги по **экспериментальной** траектории в пространстве
-      деформаций Ильюшина (удобная абсцисса для графиков).
     - Добавляются ``phi`` — угол между векторами (MC и EXP) и ``relative_error`` = (|σ_mc|-|σ_exp|)/|σ_exp|.
     """
     exp = experimental_df.copy()
     num = numerical_df.copy()
-
-    il_exp = calculate_ilushin_strain_vector(exp, compressible=compressible)
-    s_df = ilushin_strain_arc_length_by_time(
-        exp, time_col=time_col, compressible=compressible, ilushin_strain_df=il_exp
-    )
-    exp = exp.merge(s_df, on=time_col, how='inner')
 
     se1, se2, se3 = calculate_stress_vector(exp)
     exp['Sig_1_exp'] = se1.to_numpy()
@@ -336,3 +327,48 @@ def calculate_theta(df, deriv_suffix='_spline'):
         theta[denom < 1e-30] = 0.0
         
     return theta
+
+def mean_hydrostatic_stress(
+    df,
+    s_zz_col='S_ZZ',
+    s_tt_col='S_TT',
+    s_rr_col='S_RR',
+):
+    """
+    Среднее гидростатическое напряжение σ_mean = (σ_zz + σ_θθ + σ_rr) / 3.
+
+    Если столбца ``s_rr_col`` в ``df`` нет, принимается σ_rr = 0 (тогда
+    σ_mean = (σ_zz + σ_θθ) / 3.
+
+    Returns:
+        pd.Series: значения σ_mean по строкам ``df``.
+    """
+    required = [s_zz_col, s_tt_col]
+    missing = [c for c in required if c not in df.columns]
+    if missing:
+        raise KeyError(
+            f"Для среднего напряжения нужны столбцы {required}; отсутствуют: {missing}"
+        )
+    if s_rr_col in df.columns:
+        return (df[s_zz_col] + df[s_tt_col] + df[s_rr_col]) / 3.0
+    return (df[s_zz_col] + df[s_tt_col]) / 3.0
+
+
+def calculate_mean_stress(
+    df,
+    new_col_name='Sigma_Mean',
+    s_zz_col='S_ZZ',
+    s_tt_col='S_TT',
+    s_rr_col='S_RR',
+):
+    """
+    Добавляет в ``df`` столбец со средним напряжением.
+    При наличии ``S_RR`` он входит в среднее; иначе используется (S_ZZ + S_TT) / 3.
+    """
+    df[new_col_name] = mean_hydrostatic_stress(
+        df,
+        s_zz_col=s_zz_col,
+        s_tt_col=s_tt_col,
+        s_rr_col=s_rr_col,
+    )
+    return df
