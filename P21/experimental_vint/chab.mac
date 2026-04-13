@@ -82,7 +82,7 @@ D,1,UY,0
 
 	epsx = exp_ett(i) / 100.0
 	epsy = exp_ezz(i) / 100.0
-	tauxy = exp_etz(i) / 100.0
+	tauxy = 2.0*exp_etz(i) / 100.0 !!! Переход к инженерному сдвигу (Gamma = 2*Eps)
 
 	! ux = epsx*x + tauxy*y
 	! uy = epsy*y
