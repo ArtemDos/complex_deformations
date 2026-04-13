@@ -194,60 +194,83 @@ last_saved_time = t_raw(1)
 *DIM, v_eppleqv, ARRAY, count
 *DIM, v_nlepeq, ARRAY, count
 
+*DIM, v_scaler, ARRAY, n_raw ! Создаем вспомогательный массив из 0.5 для деления сдвигов
+*VFILL, v_scaler(1), RAMP, 0.5, 0 
+
 *VMASK, keep_flag(1)
 *VFUN, v_time(1), COMP, t_raw(1)
 
 VGET, buf(1), 2
 *VMASK, keep_flag(1)
 *VFUN, v_epelx(1), COMP, buf(1)
+
 VGET, buf(1), 3
 *VMASK, keep_flag(1)
 *VFUN, v_epplx(1), COMP, buf(1)
+
 VGET, buf(1), 4
 *VMASK, keep_flag(1)
 *VFUN, v_eptox(1), COMP, buf(1)
+
 VGET, buf(1), 5
 *VMASK, keep_flag(1)
 *VFUN, v_epely(1), COMP, buf(1)
+
 VGET, buf(1), 6
 *VMASK, keep_flag(1)
 *VFUN, v_epply(1), COMP, buf(1)
+
 VGET, buf(1), 7
 *VMASK, keep_flag(1)
 *VFUN, v_eptoy(1), COMP, buf(1)
-VGET, buf(1), 8
+
+VGET, buf(1), 8  ! Берем инженерный сдвиг из ANSYS
+*VOPER, buf(1), buf(1), MULT, v_scaler(1) ! Умножаем весь столбец на 0.5
 *VMASK, keep_flag(1)
 *VFUN, v_epelxy(1), COMP, buf(1)
-VGET, buf(1), 9
+
+VGET, buf(1), 9  ! Берем пластический инженерный сдвиг
+*VOPER, buf(1), buf(1), MULT, v_scaler(1) ! Умножаем весь столбец на 0.5
 *VMASK, keep_flag(1)
 *VFUN, v_epplxy(1), COMP, buf(1)
-VGET, buf(1), 10
+
+VGET, buf(1), 10 ! Берем полный инженерный сдвиг
+*VOPER, buf(1), buf(1), MULT, v_scaler(1) ! Умножаем весь столбец на 0.5
 *VMASK, keep_flag(1)
 *VFUN, v_eptoxy(1), COMP, buf(1)
+
 VGET, buf(1), 11
 *VMASK, keep_flag(1)
 *VFUN, v_epelz(1), COMP, buf(1)
+
 VGET, buf(1), 12
 *VMASK, keep_flag(1)
 *VFUN, v_epplz(1), COMP, buf(1)
+
 VGET, buf(1), 13
 *VMASK, keep_flag(1)
 *VFUN, v_eptoz(1), COMP, buf(1)
+
 VGET, buf(1), 14
 *VMASK, keep_flag(1)
 *VFUN, v_sx(1), COMP, buf(1)
+
 VGET, buf(1), 15
 *VMASK, keep_flag(1)
 *VFUN, v_sy(1), COMP, buf(1)
+
 VGET, buf(1), 16
 *VMASK, keep_flag(1)
 *VFUN, v_sxy(1), COMP, buf(1)
+
 VGET, buf(1), 17
 *VMASK, keep_flag(1)
 *VFUN, v_seqv(1), COMP, buf(1)
+
 VGET, buf(1), 18
 *VMASK, keep_flag(1)
 *VFUN, v_eppleqv(1), COMP, buf(1)
+
 VGET, buf(1), 19
 *VMASK, keep_flag(1)
 *VFUN, v_nlepeq(1), COMP, buf(1)
