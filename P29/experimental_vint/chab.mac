@@ -82,7 +82,7 @@ D,1,UY,0
 
 	epsx = exp_ett(i) / 100.0
 	epsy = exp_ezz(i) / 100.0
-	tauxy = exp_etz(i) / 100.0
+	tauxy = 2.0 * exp_etz(i) / 100.0 !!! Переход к инженерному сдвигу (Gamma = 2*Eps)
 
 	! ux = epsx*x + tauxy*y
 	! uy = epsy*y
@@ -193,6 +193,10 @@ last_saved_time = t_raw(1)
 *DIM, v_seqv, ARRAY, count
 *DIM, v_eppleqv, ARRAY, count
 *DIM, v_nlepeq, ARRAY, count
+
+*VOPER, v_epelxy(1), v_epelxy(1), MULT, 0.5
+*VOPER, v_epplxy(1), v_epplxy(1), MULT, 0.5
+*VOPER, v_eptoxy(1), v_eptoxy(1), MULT, 0.5
 
 *VMASK, keep_flag(1)
 *VFUN, v_time(1), COMP, t_raw(1)
