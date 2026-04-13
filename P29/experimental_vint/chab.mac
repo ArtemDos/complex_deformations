@@ -82,7 +82,7 @@ D,1,UY,0
 
 	epsx = exp_ett(i) / 100.0
 	epsy = exp_ezz(i) / 100.0
-	tauxy = 2.0 * exp_etz(i) / 100.0 !!! Переход к инженерному сдвигу (Gamma = 2*Eps)
+	tauxy = 2.0*exp_etz(i) / 100.0 !!! Переход к инженерному сдвигу (Gamma = 2*Eps)
 
 	! ux = epsx*x + tauxy*y
 	! uy = epsy*y
@@ -194,10 +194,6 @@ last_saved_time = t_raw(1)
 *DIM, v_eppleqv, ARRAY, count
 *DIM, v_nlepeq, ARRAY, count
 
-*VOPER, v_epelxy(1), v_epelxy(1), MULT, 0.5
-*VOPER, v_epplxy(1), v_epplxy(1), MULT, 0.5
-*VOPER, v_eptoxy(1), v_eptoxy(1), MULT, 0.5
-
 *VMASK, keep_flag(1)
 *VFUN, v_time(1), COMP, t_raw(1)
 
@@ -222,12 +218,15 @@ VGET, buf(1), 7
 VGET, buf(1), 8
 *VMASK, keep_flag(1)
 *VFUN, v_epelxy(1), COMP, buf(1)
+*VFUN, v_epelxy(1), SCALE, v_epelxy(1), 0.5
 VGET, buf(1), 9
 *VMASK, keep_flag(1)
 *VFUN, v_epplxy(1), COMP, buf(1)
+*VFUN, v_epplxy(1), SCALE, v_epplxy(1), 0.5
 VGET, buf(1), 10
 *VMASK, keep_flag(1)
 *VFUN, v_eptoxy(1), COMP, buf(1)
+*VFUN, v_eptoxy(1), SCALE, v_eptoxy(1), 0.5 
 VGET, buf(1), 11
 *VMASK, keep_flag(1)
 *VFUN, v_epelz(1), COMP, buf(1)
