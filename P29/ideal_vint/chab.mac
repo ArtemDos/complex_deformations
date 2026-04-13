@@ -3,8 +3,7 @@
 ! Размерность мм, МПа
 
 /CLEAR,NOSTART
-/FILENAME, chab
-
+/FILENAME, chab_incompressible
 
 *DIM, param_buf, ARRAY, 1 ! Создаем временный массив для чтения из одного элемента
 
@@ -146,7 +145,7 @@ dalf = (2*pi*nv) / N_stage2 ! Изменение угла на каждом ша
 	alf=dalf*j
 	epsx = sqrt(3)/2*a*(alf/(2*pi)) - 1/2*cc*(cos(alf)-1) ! соответствует eps_tetta
 	epsy=cc*(cos(alf)-1)+epsy0 ! соответствует eps_z
-	tauxy=-2*sqrt(3)/2*cc*sin(alf) ! соответствует gamma_tetta_z=2*eps_tetta_z
+	tauxy=2*sqrt(3)/2*cc*sin(alf) ! соответствует gamma_tetta_z=2*eps_tetta_z
 
 	! Узел 2 (x=size, y=0)
 	d2x = epsx*size + tauxy*0
