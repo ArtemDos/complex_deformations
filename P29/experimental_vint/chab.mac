@@ -198,6 +198,11 @@ last_saved_time = t_raw(1)
 *DIM, v_eppleqv, ARRAY, count
 *DIM, v_nlepeq, ARRAY, count
 
+
+! Создаем вспомогательный массив из 0.5 для деления сдвигов
+*DIM, v_scaler, ARRAY, n_raw
+*VFILL, v_scaler(1), RAMP, 0.5, 0 
+
 *VMASK, keep_flag(1)
 *VFUN, v_time(1), COMP, t_raw(1)
 
@@ -219,15 +224,27 @@ VGET, buf(1), 6
 VGET, buf(1), 7
 *VMASK, keep_flag(1)
 *VFUN, v_eptoy(1), COMP, buf(1)
-VGET, buf(1), 31
+
+
+! --- ОБРАБОТКА СДВИГОВ ЧЕРЕЗ МАССИВЫ (ГАРАНТИРОВАННОЕ ДЕЛЕНИЕ) ---
+VGET, buf(1), 8  ! Берем инженерный сдвиг из ANSYS
+*VOPER, buf(1), buf(1), MULT, v_scaler(1) ! Умножаем весь столбец на 0.5
 *VMASK, keep_flag(1)
 *VFUN, v_epelxy(1), COMP, buf(1)
-VGET, buf(1), 32
+
+VGET, buf(1), 9  ! Берем пластический инженерный сдвиг
+*VOPER, buf(1), buf(1), MULT, v_scaler(1) ! Умножаем весь столбец на 0.5
 *VMASK, keep_flag(1)
 *VFUN, v_epplxy(1), COMP, buf(1)
-VGET, buf(1), 33
+
+VGET, buf(1), 10 ! Берем полный инженерный сдвиг
+*VOPER, buf(1), buf(1), MULT, v_scaler(1) ! Умножаем весь столбец на 0.5
 *VMASK, keep_flag(1)
 *VFUN, v_eptoxy(1), COMP, buf(1)
+! ---------------------------------------------------------------
+
+
+
 VGET, buf(1), 11
 *VMASK, keep_flag(1)
 *VFUN, v_epelz(1), COMP, buf(1)
