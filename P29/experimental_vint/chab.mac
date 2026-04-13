@@ -135,7 +135,7 @@ ADD,7,5,6, , , , ,1,1,1, !!! полная деформация eps_yy
 
 ESOL,8,1,3,EPEL,XY,
 ESOL,9,1,3,EPPL,XY,
-ADD,10,8,9, , , , ,1,1,1, !!! полная деформация eps_xy
+ADD,10,8,9, , , , ,1,1,1, !!! полный инженерный сдвиг eps_xy
 
 PROD,31,8, , EPS_EL_XY, , , 0.5   ! Var 31 = Var 8 * 1.0 * 0.5
 PROD,32,9, , EPS_PL_XY, , , 0.5   ! Var 32 = Var 9 * 1.0 * 0.5
@@ -198,9 +198,7 @@ last_saved_time = t_raw(1)
 *DIM, v_eppleqv, ARRAY, count
 *DIM, v_nlepeq, ARRAY, count
 
-
-! Создаем вспомогательный массив из 0.5 для деления сдвигов
-*DIM, v_scaler, ARRAY, n_raw
+*DIM, v_scaler, ARRAY, n_raw ! Создаем вспомогательный массив из 0.5 для деления сдвигов
 *VFILL, v_scaler(1), RAMP, 0.5, 0 
 
 *VMASK, keep_flag(1)
@@ -209,24 +207,27 @@ last_saved_time = t_raw(1)
 VGET, buf(1), 2
 *VMASK, keep_flag(1)
 *VFUN, v_epelx(1), COMP, buf(1)
+
 VGET, buf(1), 3
 *VMASK, keep_flag(1)
 *VFUN, v_epplx(1), COMP, buf(1)
+
 VGET, buf(1), 4
 *VMASK, keep_flag(1)
 *VFUN, v_eptox(1), COMP, buf(1)
+
 VGET, buf(1), 5
 *VMASK, keep_flag(1)
 *VFUN, v_epely(1), COMP, buf(1)
+
 VGET, buf(1), 6
 *VMASK, keep_flag(1)
 *VFUN, v_epply(1), COMP, buf(1)
+
 VGET, buf(1), 7
 *VMASK, keep_flag(1)
 *VFUN, v_eptoy(1), COMP, buf(1)
 
-
-! --- ОБРАБОТКА СДВИГОВ ЧЕРЕЗ МАССИВЫ (ГАРАНТИРОВАННОЕ ДЕЛЕНИЕ) ---
 VGET, buf(1), 8  ! Берем инженерный сдвиг из ANSYS
 *VOPER, buf(1), buf(1), MULT, v_scaler(1) ! Умножаем весь столбец на 0.5
 *VMASK, keep_flag(1)
@@ -241,34 +242,39 @@ VGET, buf(1), 10 ! Берем полный инженерный сдвиг
 *VOPER, buf(1), buf(1), MULT, v_scaler(1) ! Умножаем весь столбец на 0.5
 *VMASK, keep_flag(1)
 *VFUN, v_eptoxy(1), COMP, buf(1)
-! ---------------------------------------------------------------
-
-
 
 VGET, buf(1), 11
 *VMASK, keep_flag(1)
 *VFUN, v_epelz(1), COMP, buf(1)
+
 VGET, buf(1), 12
 *VMASK, keep_flag(1)
 *VFUN, v_epplz(1), COMP, buf(1)
+
 VGET, buf(1), 13
 *VMASK, keep_flag(1)
 *VFUN, v_eptoz(1), COMP, buf(1)
+
 VGET, buf(1), 14
 *VMASK, keep_flag(1)
 *VFUN, v_sx(1), COMP, buf(1)
+
 VGET, buf(1), 15
 *VMASK, keep_flag(1)
 *VFUN, v_sy(1), COMP, buf(1)
+
 VGET, buf(1), 16
 *VMASK, keep_flag(1)
 *VFUN, v_sxy(1), COMP, buf(1)
+
 VGET, buf(1), 17
 *VMASK, keep_flag(1)
 *VFUN, v_seqv(1), COMP, buf(1)
+
 VGET, buf(1), 18
 *VMASK, keep_flag(1)
 *VFUN, v_eppleqv(1), COMP, buf(1)
+
 VGET, buf(1), 19
 *VMASK, keep_flag(1)
 *VFUN, v_nlepeq(1), COMP, buf(1)
