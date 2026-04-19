@@ -1,5 +1,6 @@
 /CLEAR, NOSTART
-/FILENAME, chab
+/FILENAME, chab_incompressible
+
 *DIM, param_buf, ARRAY, 1 ! Создаем временный массив для чтения из одного элемента
 
 *VREAD, param_buf(1), filter_step, txt, , , 
@@ -46,7 +47,7 @@ size=1 !! Размер элемента в мм
 /PREP7
 ET,1,PLANE182
 MP,EX,1,2.05e5 !!! МПа
-MP,PRXY,1,0.299999999999
+MP,PRXY,1,0.499999999999
 TB,CHAB, 1, 1, 3  ! 3 слагаемых, нелинейная модель
 TBTEMP,0
 ! Предел текучести (начальный радиус поверхности)
