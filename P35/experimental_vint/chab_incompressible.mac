@@ -1,0 +1,287 @@
+/CLEAR, NOSTART
+/FILENAME, chab_incompressible
+
+*DIM, param_buf, ARRAY, 1 ! Создаем временный массив для чтения из одного элемента
+
+*VREAD, param_buf(1), filter_step, txt, , , 
+(F20.0) ! указывает команде *VREAD, что ожидаем считать вещественное число в следующих 20 символах из строки
+filter_step = param_buf(1)
+
+*VREAD, param_buf(1), nu, txt, , , 
+(F20.0)
+nu = param_buf(1)
+
+*DEL, param_buf ! Удаляем буфер
+
+*DIM, chab_buf, ARRAY, 7 ! Массив для 7 параметров шабоши
+
+*VREAD, chab_buf(1), chab_params, txt, , , 
+(F20.0)
+
+sig_yield = chab_buf(1)
+c1 = chab_buf(2)
+gam1 = chab_buf(3)
+c2 = chab_buf(4)
+gam2 = chab_buf(5)
+c3 = chab_buf(6)
+gam3 = chab_buf(7)
+
+*DEL, chab_buf
+
+exp_num_points = 65 ! Количество шагов в эксперименте
+
+! Загружаем днформации e_zz из экперимента
+*DIM, exp_ezz, TABLE, exp_num_points   
+*TREAD,exp_ezz,'ezz_data','csv',' ',1,
+
+! Загружаем днформации e_tt из экперимента
+*DIM, exp_ett, TABLE, exp_num_points   
+*TREAD,exp_ett,'ett_data','csv',' ',1,
+
+! Загружаем днформации e_tz из экперимента
+*DIM, exp_etz, TABLE, exp_num_points   
+*TREAD,exp_etz,'etz_data','csv',' ',1,
+
+size=1 !! Размер элемента в мм
+
+/PREP7
+ET,1,PLANE182
+MP,EX,1,2.05e5 !!! МПа
+MP,PRXY,1,0.499999999999
+TB,CHAB, 1, 1, 3  ! 3 слагаемых, нелинейная модель
+TBTEMP,0
+! Предел текучести (начальный радиус поверхности)
+TBDATA,1, sig_yield
+! Параметры для 1-го слагаемого (C1, gamma1)
+TBDATA,2, c1, gam1
+! Параметры для 2-го слагаемого (C2, gamma2)
+TBDATA,4, c2, gam2
+! Параметры для 3-го слагаемого (C3, gamma3)
+TBDATA,6, c3, gam3
+
+! узлы элемента
+N,1,0,0,0
+N,2,size,0,0
+N,3,size,size,0
+N,4,0,size,0
+E,1,2,3,4
+
+
+/SOLU
+
+! 1-ый шаг - решение с нулевыми граничными условиями
+D,ALL,ALL,0
+SOLVE
+OUTRES,ALL,LAST
+
+! Жестко закрепляем узел 1
+D,1,UX,0 
+D,1,UY,0
+
+*DO, i, 1, exp_num_points, 1
+
+	epsx = exp_ett(i) / 100.0
+	epsy = exp_ezz(i) / 100.0
+	tauxy = 2.0*exp_etz(i) / 100.0 !!! Переход к инженерному сдвигу (Gamma = 2*Eps)
+
+	! ux = epsx*x + tauxy*y
+	! uy = epsy*y
+
+	! Узел 2 (x=size, y=0)
+	d2x = epsx*size + tauxy*0
+	d2y = epsy*0
+
+	! Узел 3 (x=size, y=size)
+	d3x = epsx*size + tauxy*size
+	d3y = epsy*size
+
+	! Узел 4 (x=0, y=size)
+	d4x = epsx*0 + tauxy*size
+	d4y = epsy*size
+
+	D,2,UX,d2x
+	D,2,UY,d2y
+	
+	D,3,UX,d3x
+	D,3,UY,d3y
+	
+	D,4,UX,d4x
+	D,4,UY,d4y
+
+	TIME, i
+	NSUBST,100,0,0
+	AUTOTS,1
+	SOLVE
+*ENDDO
+
+FINISH
+
+
+/POST26
+
+*GET, ActiveJob, ACTIVE, 0, JOBNAM
+FILE, ActiveJob, 'rst'
+
+NUMVAR, 50
+
+! Объявление деформаций
+ESOL,2,1,3,EPEL,X,
+ESOL,3,1,3,EPPL,X,
+ADD,4,2,3, , , , ,1,1,1, !!! полная деформация eps_xx
+
+ESOL,5,1,3,EPEL,Y,
+ESOL,6,1,3,EPPL,Y,
+ADD,7,5,6, , , , ,1,1,1, !!! полная деформация eps_yy
+
+ESOL,8,1,3,EPEL,XY,
+ESOL,9,1,3,EPPL,XY,
+ADD,10,8,9, , , , ,1,1,1, !!! полная деформация eps_xy
+
+ESOL,11,1,3,EPEL,Z,
+ESOL,12,1,3,EPPL,Z,
+ADD,13,11,12, , , , ,1,1,1, !!! полная деформация eps_zz
+
+! Объявление напряжений
+ESOL,14,1,3,S,X,
+ESOL,15,1,3,S,Y,
+ESOL,16,1,3,S,XY,
+ESOL,17,1,3,S,EQV, ! интенсивность напряжений
+
+ESOL,18,1,3,EPPL,EQV, ! интенсивность пластических деформаций
+ESOL,19,1,3,NL,EPEQ, ! параметр Одквиста
+
+
+STORE,MERGE
+*GET, n_raw, VARI, 1, NSETS
+*DIM, t_raw, ARRAY, n_raw
+VGET, t_raw(1), 1
+
+*DIM, keep_flag, ARRAY, n_raw 
+*VFILL, keep_flag(1), RAMP, 0, 0 
+
+keep_flag(1) = 1
+count = 1
+last_saved_time = t_raw(1)
+
+*DO, i, 2, n_raw, 1
+    curr_time = t_raw(i)
+    delta = curr_time - last_saved_time
+    *IF, delta, GE, (filter_step - 1.0e-5), THEN
+        keep_flag(i) = 1  
+        count = count + 1 
+        last_saved_time = curr_time
+    *ENDIF
+*ENDDO
+
+*DIM, buf, ARRAY, n_raw
+*DIM, v_time, ARRAY, count
+*DIM, v_epelx, ARRAY, count
+*DIM, v_epplx, ARRAY, count
+*DIM, v_eptox, ARRAY, count
+*DIM, v_epely, ARRAY, count
+*DIM, v_epply, ARRAY, count
+*DIM, v_eptoy, ARRAY, count
+*DIM, v_epelxy, ARRAY, count
+*DIM, v_epplxy, ARRAY, count
+*DIM, v_eptoxy, ARRAY, count
+*DIM, v_epelz, ARRAY, count
+*DIM, v_epplz, ARRAY, count
+*DIM, v_eptoz, ARRAY, count
+*DIM, v_sx, ARRAY, count
+*DIM, v_sy, ARRAY, count
+*DIM, v_sxy, ARRAY, count
+*DIM, v_seqv, ARRAY, count
+*DIM, v_eppleqv, ARRAY, count
+*DIM, v_nlepeq, ARRAY, count
+
+*DIM, v_scaler, ARRAY, n_raw ! Создаем вспомогательный массив из 0.5 для деления сдвигов
+*VFILL, v_scaler(1), RAMP, 0.5, 0 
+
+*VMASK, keep_flag(1)
+*VFUN, v_time(1), COMP, t_raw(1)
+
+VGET, buf(1), 2
+*VMASK, keep_flag(1)
+*VFUN, v_epelx(1), COMP, buf(1)
+
+VGET, buf(1), 3
+*VMASK, keep_flag(1)
+*VFUN, v_epplx(1), COMP, buf(1)
+
+VGET, buf(1), 4
+*VMASK, keep_flag(1)
+*VFUN, v_eptox(1), COMP, buf(1)
+
+VGET, buf(1), 5
+*VMASK, keep_flag(1)
+*VFUN, v_epely(1), COMP, buf(1)
+
+VGET, buf(1), 6
+*VMASK, keep_flag(1)
+*VFUN, v_epply(1), COMP, buf(1)
+
+VGET, buf(1), 7
+*VMASK, keep_flag(1)
+*VFUN, v_eptoy(1), COMP, buf(1)
+
+VGET, buf(1), 8  ! Берем инженерный сдвиг из ANSYS
+*VOPER, buf(1), buf(1), MULT, v_scaler(1) ! Умножаем весь столбец на 0.5
+*VMASK, keep_flag(1)
+*VFUN, v_epelxy(1), COMP, buf(1)
+
+VGET, buf(1), 9  ! Берем пластический инженерный сдвиг
+*VOPER, buf(1), buf(1), MULT, v_scaler(1) ! Умножаем весь столбец на 0.5
+*VMASK, keep_flag(1)
+*VFUN, v_epplxy(1), COMP, buf(1)
+
+VGET, buf(1), 10 ! Берем полный инженерный сдвиг
+*VOPER, buf(1), buf(1), MULT, v_scaler(1) ! Умножаем весь столбец на 0.5
+*VMASK, keep_flag(1)
+*VFUN, v_eptoxy(1), COMP, buf(1)
+
+VGET, buf(1), 11
+*VMASK, keep_flag(1)
+*VFUN, v_epelz(1), COMP, buf(1)
+
+VGET, buf(1), 12
+*VMASK, keep_flag(1)
+*VFUN, v_epplz(1), COMP, buf(1)
+
+VGET, buf(1), 13
+*VMASK, keep_flag(1)
+*VFUN, v_eptoz(1), COMP, buf(1)
+
+VGET, buf(1), 14
+*VMASK, keep_flag(1)
+*VFUN, v_sx(1), COMP, buf(1)
+
+VGET, buf(1), 15
+*VMASK, keep_flag(1)
+*VFUN, v_sy(1), COMP, buf(1)
+
+VGET, buf(1), 16
+*VMASK, keep_flag(1)
+*VFUN, v_sxy(1), COMP, buf(1)
+
+VGET, buf(1), 17
+*VMASK, keep_flag(1)
+*VFUN, v_seqv(1), COMP, buf(1)
+
+VGET, buf(1), 18
+*VMASK, keep_flag(1)
+*VFUN, v_eppleqv(1), COMP, buf(1)
+
+VGET, buf(1), 19
+*VMASK, keep_flag(1)
+*VFUN, v_nlepeq(1), COMP, buf(1)
+
+*CFOPEN, %ActiveJob%, csv
+*VWRITE,'Time','EPEL_TT','EPPL_TT','EPTO_TT','EPEL_ZZ','EPPL_ZZ','EPTO_ZZ','EPEL_TZ','EPPL_TZ','EPTO_TZ','EPEL_RR','EPPL_RR','EPTO_RR','S_TT','S_ZZ','S_TZ','S_EQV','EPPL_EQV','NL_EPEQ'
+(A,',',A,',',A,',',A,',',A,',',A,',',A,',',A,',',A,',',A,',',A,',',A,',',A,',',A,',',A,',',A,',',A,',',A,',',A)
+
+*VWRITE, v_time(1), v_epelx(1), v_epplx(1), v_eptox(1), v_epely(1), v_epply(1), v_eptoy(1), v_epelxy(1), v_epplxy(1), v_eptoxy(1), v_epelz(1), v_epplz(1), v_eptoz(1), v_sx(1), v_sy(1), v_sxy(1), v_seqv(1), v_eppleqv(1), v_nlepeq(1)
+(E14.7,',',E14.7,',',E14.7,',',E14.7,',',E14.7,',',E14.7,',',E14.7,',',E14.7,',',E14.7,',',E14.7,',',E14.7,',',E14.7,',',E14.7,',',E14.7,',',E14.7,',',E14.7,',',E14.7,',',E14.7,',',E14.7)
+*CFCLOS
+
+*DEL, ALL
+FINISH
